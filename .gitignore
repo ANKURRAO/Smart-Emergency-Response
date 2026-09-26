@@ -2,7 +2,8 @@
 # Smart Emergency Response - Git Ignore
 # ============================================================
 
-# Environment / secrets
+```gitignore
+# Environment Variables
 .env
 .env.*
 !.env.example
@@ -18,16 +19,61 @@ __pycache__/
 *.py[cod]
 .venv/
 venv/
+env/
+ENV/
 
-# IDE / OS
+# Python cache
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# IDE
 .vscode/
 .idea/
+*.code-workspace
+
+# Operating System
 .DS_Store
 Thumbs.db
+desktop.ini
 
 # Logs
 *.log
+logs/
 
-# Local Firebase / service-account files
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.swp
+*.swo
+
+# Build / Cache
+.cache/
+dist/
+build/
+coverage/
+
+# Firebase / Service Account Secrets
 service-account*.json
 firebase-adminsdk*.json
+*-service-account.json
+
+# Private Keys / Certificates
+*.pem
+*.key
+*.crt
+
+# Local Database
+*.sqlite
+*.sqlite3
+*.db
+
+# Local uploads / temporary data
+uploads/
+temp/
+tmp/
+
+# Keep example environment file
+!.env.example
+```

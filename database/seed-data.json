@@ -1,0 +1,130 @@
+{
+  "users": {
+    "demo-citizen-001": {
+      "email": "citizen.demo@example.com",
+      "role": "citizen",
+      "name": "Demo Citizen",
+      "phone": "9000000001",
+      "createdAt": 1758000000000
+    },
+
+    "demo-responder-001": {
+      "email": "responder.demo@example.com",
+      "role": "responder",
+      "name": "Demo Responder",
+      "phone": "9000000002",
+      "createdAt": 1758000000000
+    },
+
+    "demo-admin-001": {
+      "email": "admin.demo@example.com",
+      "role": "admin",
+      "name": "System Administrator",
+      "phone": "9000000003",
+      "createdAt": 1758000000000
+    }
+  },
+
+  "responders": {
+    "demo-responder-001": {
+      "userId": "demo-responder-001",
+      "name": "Demo Responder",
+      "phone": "9000000002",
+      "department": "Emergency Response",
+      "availability": "available",
+      "location": {
+        "latitude": 26.7606,
+        "longitude": 83.3732
+      },
+      "currentIncidentId": "",
+      "updatedAt": 1758000000000
+    }
+  },
+
+  "incidents": {
+    "demo-incident-001": {
+      "citizenId": "demo-citizen-001",
+      "category": "medical",
+      "title": "Medical Emergency",
+      "description": "Demo medical emergency for testing.",
+      "severity": "critical",
+      "priority": 95,
+      "status": "reported",
+      "location": {
+        "latitude": 26.7606,
+        "longitude": 83.3732,
+        "address": "Gorakhpur, Uttar Pradesh"
+      },
+      "imageUrl": "",
+      "responderId": "",
+      "ai": {
+        "category": "medical",
+        "severity": "critical",
+        "priority": 95,
+        "confidence": 0.91,
+        "duplicate": false
+      },
+      "createdAt": 1758000000000
+    },
+
+    "demo-incident-002": {
+      "citizenId": "demo-citizen-001",
+      "category": "fire",
+      "title": "Building Fire",
+      "description": "Smoke and fire reported from a building.",
+      "severity": "high",
+      "priority": 88,
+      "status": "assigned",
+      "location": {
+        "latitude": 26.762,
+        "longitude": 83.37,
+        "address": "Gorakhpur, Uttar Pradesh"
+      },
+      "imageUrl": "",
+      "responderId": "demo-responder-001",
+      "ai": {
+        "category": "fire",
+        "severity": "high",
+        "priority": 88,
+        "confidence": 0.93,
+        "duplicate": false
+      },
+      "createdAt": 1758000005000
+    }
+  },
+
+  "notifications": {
+    "demo-citizen-001": {
+      "demo-notification-001": {
+        "title": "Emergency Report Created",
+        "message": "Your emergency report has been successfully created.",
+        "type": "incident_created",
+        "incidentId": "demo-incident-001",
+        "read": false,
+        "createdAt": 1758000000000
+      }
+    },
+
+    "demo-responder-001": {
+      "demo-notification-002": {
+        "title": "New Emergency Assignment",
+        "message": "You have been assigned to a new emergency.",
+        "type": "incident_assignment",
+        "incidentId": "demo-incident-002",
+        "read": false,
+        "createdAt": 1758000005000
+      }
+    },
+
+    "demo-admin-001": {
+      "demo-notification-003": {
+        "title": "System Notification",
+        "message": "Smart Emergency Response system is ready.",
+        "type": "system",
+        "incidentId": "",
+        "read": false,
+        "createdAt": 1758000000000
+      }
+    }
+  }
+}

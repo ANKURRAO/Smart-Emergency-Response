@@ -1,14 +1,121 @@
 {
   "rules": {
+    ".read": false,
+    ".write": false,
+
     "users": {
       "$uid": {
-        ".read": "auth != null && auth.uid === $uid",
-        ".write": "auth != null && auth.uid === $uid"
+        ".read": "auth != null && (auth.uid === $uid || root.child('users').child(auth.uid).child('role').val() === 'admin')",
+        ".write": "auth != null && (auth.uid === $uid || root.child('users').child(auth.uid).child('role').val() === 'admin')",
+
+        ".validate": "newData.hasChildren(['email', 'role', 'createdAt'])",
+
+        "email": {
+          ".validate": "newData.isString()"
+        },
+
+        "role": {
+          ".validate": "newData.val() === 'citizen' || newData.val() === 'responder' || newData.val() === 'admin'"
+        },
+
+        "createdAt": {
+          ".validate": "newData.isNumber()"
+        }
       }
     },
+
     "incidents": {
-      ".read": "auth != null",
-      ".write": "auth != null"
+      "$incidentId": {
+        ".read": "auth != null",
+
+        ".write": "auth != null && (root.child('users').child(auth.uid).child('role').val() === 'admin' || (newData.exists() && newData.child('citizenId').val() === auth.uid) || (data.exists() && data.child('citizenId').val() === auth.uid) || (data.exists() && data.child('responderId').val() === auth.uid))",
+
+        ".validate": "newData.hasChildren(['citizenId', 'category', 'description', 'severity', 'status', 'createdAt'])",
+
+        "citizenId": {
+          ".validate": "newData.isString()"
+        },
+
+        "category": {
+          ".validate": "newData.isString()"
+        },
+
+        "description": {
+          ".validate": "newData.isString()"
+        },
+
+        "severity": {
+          ".validate": "newData.val() === 'low' || newData.val() === 'medium' || newData.val() === 'high' || newData.val() === 'critical'"
+        },
+
+        "status": {
+          ".validate": "newData.val() === 'reported' || newData.val() === 'assigned' || newData.val() === 'accepted' || newData.val() === 'on_the_way' || newData.val() === 'arrived' || newData.val() === 'resolved' || newData.val() === 'cancelled'"
+        },
+
+        "createdAt": {
+          ".validate": "newData.isNumber()"
+        }
+      }
+    },
+
+    "responders": {
+      "$responderId": {
+        ".read": "auth != null",
+
+        ".write": "auth != null && (auth.uid === $responderId || root.child('users').child(auth.uid).child('role').val() === 'admin')",
+
+        ".validate": "newData.hasChildren(['userId', 'name', 'availability'])",
+
+        "userId": {
+          ".validate": "newData.isString()"
+        },
+
+        "name": {
+          ".validate": "newData.isString()"
+        },
+
+        "availability": {
+          ".validate": "newData.val() === 'available' || newData.val() === 'busy' || newData.val() === 'offline'"
+        },
+
+        "location": {
+          "latitude": {
+            ".validate": "newData.isNumber() && newData.val() >= -90 && newData.val() <= 90"
+          },
+
+          "longitude": {
+            ".validate": "newData.isNumber() && newData.val() >= -180 && newData.val() <= 180"
+          }
+        }
+      }
+    },
+
+    "notifications": {
+      "$uid": {
+        ".read": "auth != null && (auth.uid === $uid || root.child('users').child(auth.uid).child('role').val() === 'admin')",
+
+        "$notificationId": {
+          ".write": "auth != null && (auth.uid === $uid || root.child('users').child(auth.uid).child('role').val() === 'admin')",
+
+          ".validate": "newData.hasChildren(['title', 'message', 'createdAt', 'read'])",
+
+          "title": {
+            ".validate": "newData.isString()"
+          },
+
+          "message": {
+            ".validate": "newData.isString()"
+          },
+
+          "createdAt": {
+            ".validate": "newData.isNumber()"
+          },
+
+          "read": {
+            ".validate": "newData.isBoolean()"
+          }
+        }
+      }
     }
   }
 }
