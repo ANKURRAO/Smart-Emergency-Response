@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Manage Incidents | Admin</title>
+
+<style>
+*{box-sizing:border-box;font-family:Arial,sans-serif}
+body{margin:0;background:#f1f5f9;color:#1e293b}
+header{
+background:#0f172a;color:white;padding:18px 6%;
+display:flex;justify-content:space-between;align-items:center
+}
+main{max-width:1200px;margin:auto;padding:30px 20px}
+.toolbar{
+background:white;padding:18px;border-radius:12px;
+display:flex;gap:10px;flex-wrap:wrap;margin:20px 0
+}
+select,input{
+padding:11px;border:1px solid #cbd5e1;border-radius:8px
+}
+.incident{
+background:white;padding:20px;border-radius:14px;
+margin-bottom:14px;box-shadow:0 4px 15px rgba(0,0,0,.05)
+}
+.row{
+display:flex;justify-content:space-between;
+gap:10px;flex-wrap:wrap
+}
+.badge{
+padding:5px 10px;border-radius:20px;
+font-size:12px;font-weight:bold;
+background:#dbeafe;color:#1d4ed8
+}
+.critical{background:#fee2e2;color:#b91c1c}
+button{
+border:0;padding:10px 15px;border-radius:8px;
+cursor:pointer;font-weight:bold
+}
+.open{background:#2563eb;color:white}
+.back{background:#475569;color:white}
+</style>
+</head>
+
+<body>
+
+<header>
+<strong>🚨 Incident Management</strong>
+<button class="back" onclick="location.href='dashboard.html'">
+Dashboard
+</button>
+</header>
+
+<main>
+
+<h1>Emergency Incidents</h1>
+<p>Monitor and manage all reported emergencies.</p>
+
+<div class="toolbar">
+
+<select id="statusFilter">
+<option value="all">All Status</option>
+<option value="Reported">Reported</option>
+<option value="Assigned">Assigned</option>
+<option value="Accepted">Accepted</option>
+<option value="On the Way">On The Way</option>
+<option value="Arrived">Arrived</option>
+<option value="Resolved">Resolved</option>
+</select>
+
+<select id="severityFilter">
+<option value="all">All Severity</option>
+<option value="Critical">Critical</option>
+<option value="High">High</option>
+<option value="Medium">Medium</option>
+<option value="Low">Low</option>
+</select>
+
+<input
+id="search"
+placeholder="Search emergency/type/ID">
+
+</div>
+
+<section id="list">
+Loading incidents...
+</section>
+
+</main>
+
+<script type="module">
+
+import {auth,db} from "../firebase-config.js";
+
+import {
+onAuthStateChanged
+} from "https://www.gstatic.com/firebasejs/12.0.0/firebase-auth.js";
+
+import {
+ref,get,onValue
+} from "https://www.gstatic.com/firebasejs/12.0.0/firebase-database.js";
+
+let incidents=[];
+
+onAuthStateChanged(auth,async(user)=>{
+
+if(!user){
+location.href="../index.html";
+return;
+}
+
+const snap=await get(ref(db,"users/"+user.uid));
+
+if(!snap.exists() || snap.val().role!=="admin"){
+alert("Admin access required.");
+location.href="../index.html";
+return;
+}
+
+loadIncidents();
+
+});
+
+function loadIncidents(){
+
+onValue(ref(db,"incidents"),snapshot=>{
+
+incidents=[];
+
+snapshot.forEach(child=>{
+
+incidents.push({
+id:child.key,
+...child.val()
+});
+
+});
+
+incidents.sort(
+(a,b)=>
+new Date(b.createdAt||0)-
+new Date(a.createdAt||0)
+);
+
+render();
+
+});
+
+}
+
+document
+.getElementById("statusFilter")
+.addEventListener("change",render);
+
+document
+.getElementById("severityFilter")
+.addEventListener("change",render);
+
+document
+.getElementById("search")
+.addEventListener("input",render);
+
+function render(){
+
+const status=
+document.getElementById("statusFilter").value;
+
+const severity=
+document.getElementById("severityFilter").value;
+
+const search=
+document.getElementById("search").value
+.toLowerCase()
+.trim();
+
+const filtered=incidents.filter(i=>{
+
+const statusOK=
+status==="all" ||
+i.status===status;
+
+const severityOK=
+severity==="all" ||
+i.severity===severity;
+
+const text=
+`${i.type||""} ${i.description||""} ${i.id||""}`
+.toLowerCase();
+
+return statusOK &&
+severityOK &&
+(!search || text.includes(search));
+
+});
+
+const list=document.getElementById("list");
+
+if(filtered.length===0){
+
+list.innerHTML="<p>No incidents found.</p>";
+return;
+
+}
+
+list.innerHTML="";
+
+filtered.forEach(i=>{
+
+const div=document.createElement("div");
+
+div.className="incident";
+
+const critical=
+i.severity==="Critical"?"critical":"";
+
+div.innerHTML=`
+
+<div class="row">
+
+<div>
+
+<h2>
+${escapeHTML(i.type||"Emergency")}
+</h2>
+
+<small>
+ID: ${escapeHTML(i.id)}
+</small>
+
+</div>
+
+<span class="badge ${critical}">
+${escapeHTML(i.severity||"Unknown")}
+</span>
+
+</div>
+
+<p>
+${escapeHTML(i.description||"No description")}
+</p>
+
+<strong>Status:</strong>
+${escapeHTML(i.status||"Reported")}
+
+<br>
+
+<strong>Responder:</strong>
+${escapeHTML(i.responderName||"Not assigned")}
+
+<br><br>
+
+<button class="open"
+onclick="
+location.href=
+'incident-details.html?id=${encodeURIComponent(i.id)}'
+">
+
+Manage Incident
+
+</button>
+
+`;
+
+list.appendChild(div);
+
+});
+
+}
+
+function escapeHTML(value){
+return String(value)
+.replaceAll("&","&amp;")
+.replaceAll("<","&lt;")
+.replaceAll(">","&gt;")
+.replaceAll('"',"&quot;")
+.replaceAll("'","&#039;");
+}
+
+</script>
+
+</body>
+</html>

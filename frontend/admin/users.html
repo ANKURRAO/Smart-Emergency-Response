@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+
+<title>Users | Admin</title>
+
+<style>
+*{box-sizing:border-box;font-family:Arial,sans-serif}
+body{margin:0;background:#f1f5f9;color:#1e293b}
+header{
+background:#0f172a;color:white;padding:18px 6%;
+display:flex;justify-content:space-between;align-items:center
+}
+main{max-width:1100px;margin:auto;padding:30px 20px}
+.toolbar{
+background:white;padding:18px;border-radius:12px;
+margin:20px 0
+}
+input{
+width:100%;max-width:450px;
+padding:12px;border:1px solid #cbd5e1;
+border-radius:8px
+}
+.user{
+background:white;padding:20px;border-radius:14px;
+margin-bottom:14px;box-shadow:0 4px 15px rgba(0,0,0,.05)
+}
+.badge{
+display:inline-block;padding:5px 10px;
+border-radius:20px;font-size:12px;
+background:#dbeafe;color:#1d4ed8
+}
+button{
+border:0;padding:10px 15px;
+border-radius:8px;cursor:pointer;font-weight:bold
+}
+.back{background:#475569;color:white}
+</style>
+</head>
+
+<body>
+
+<header>
+
+<strong>👥 User Management</strong>
+
+<button
+class="back"
+onclick="location.href='dashboard.html'">
+Dashboard
+</button>
+
+</header>
+
+<main>
+
+<h1>Registered Users</h1>
+
+<p>
+View registered citizens and responders.
+</p>
+
+<div class="toolbar">
+
+<input
+id="search"
+placeholder="Search by email or name">
+
+</div>
+
+<section id="list">
+Loading users...
+</section>
+
+</main>
+
+<script type="module">
+
+import {auth,db} from "../firebase-config.js";
+
+import {
+onAuthStateChanged
+} from "https://www.gstatic.com/firebasejs/12.0.0/firebase-auth.js";
+
+import {
+ref,get,onValue
+} from "https://www.gstatic.com/firebasejs/12.0.0/firebase-database.js";
+
+let users=[];
+
+onAuthStateChanged(auth,async(user)=>{
+
+if(!user){
+location.href="../index.html";
+return;
+}
+
+const profile=
+await get(ref(db,"users/"+user.uid));
+
+if(
+!profile.exists() ||
+profile.val().role!=="admin"
+){
+
+alert("Admin access required.");
+location.href="../index.html";
+return;
+
+}
+
+loadUsers();
+
+});
+
+
+function loadUsers(){
+
+onValue(
+ref(db,"users"),
+snapshot=>{
+
+users=[];
+
+snapshot.forEach(child=>{
+
+users.push({
+id:child.key,
+...child.val()
+});
+
+});
+
+render();
+
+});
+
+}
+
+
+document
+.getElementById("search")
+.addEventListener("input",render);
+
+
+function render(){
+
+const search=
+document.getElementById("search")
+.value
+.toLowerCase()
+.trim();
+
+
+const filtered=
+users.filter(user=>{
+
+const text=
+`${user.name||""}
+${user.email||""}
+${user.role||""}`
+.toLowerCase();
+
+return !search || text.includes(search);
+
+});
+
+
+const list=
+document.getElementById("list");
+
+list.innerHTML="";
+
+
+if(filtered.length===0){
+
+list.innerHTML="<p>No users found.</p>";
+return;
+
+}
+
+
+filtered.forEach(user=>{
+
+const div=
+document.createElement("div");
+
+div.className="user";
+
+
+div.innerHTML=`
+
+<h2>
+${escapeHTML(
+user.name||
+"Unnamed User"
+)}
+</h2>
+
+<p>
+<strong>Email:</strong>
+${escapeHTML(
+user.email||"Unknown"
+)}
+</p>
+
+<p>
+<strong>Role:</strong>
+<span class="badge">
+${escapeHTML(
+user.role||"Unknown"
+)}
+</span>
+</p>
+
+<p>
+<strong>Phone:</strong>
+${escapeHTML(
+user.phone||"Not provided"
+)}
+</p>
+
+<p>
+<strong>Registered:</strong>
+${formatDate(
+user.createdAt
+)}
+</p>
+
+`;
+
+
+list.appendChild(div);
+
+});
+
+}
+
+
+function formatDate(value){
+
+if(!value)return"Unknown";
+
+const d=new Date(value);
+
+return isNaN(d)
+?"Unknown"
+:d.toLocaleString();
+
+}
+
+
+function escapeHTML(value){
+
+return String(value)
+.replaceAll("&","&amp;")
+.replaceAll("<","&lt;")
+.replaceAll(">","&gt;")
+.replaceAll('"',"&quot;")
+.replaceAll("'","&#039;");
+
+}
+
+</script>
+
+</body>
+</html>

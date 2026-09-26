@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Report Emergency | Smart Emergency Response</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+            font-family: Arial, sans-serif;
+        }
+
+        body {
+            margin: 0;
+            background: #f1f5f9;
+            color: #1e293b;
+        }
+
+        header {
+            background: #0f172a;
+            color: white;
+            padding: 18px 6%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        main {
+            max-width: 850px;
+            margin: 35px auto;
+            padding: 20px;
+        }
+
+        .form-box {
+            background: white;
+            padding: 30px;
+            border-radius: 16px;
+            box-shadow: 0 5px 25px rgba(0,0,0,.08);
+        }
+
+        h1 {
+            margin-bottom: 8px;
+        }
+
+        .subtitle {
+            color: #64748b;
+            margin-bottom: 25px;
+        }
+
+        label {
+            display: block;
+            margin: 18px 0 7px;
+            font-weight: bold;
+        }
+
+        input,
+        select,
+        textarea {
+            width: 100%;
+            padding: 13px;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            font-size: 15px;
+        }
+
+        textarea {
+            min-height: 130px;
+            resize: vertical;
+        }
+
+        .location-box {
+            background: #eff6ff;
+            border: 1px solid #bfdbfe;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 10px;
+        }
+
+        .location-btn {
+            margin-top: 10px;
+            background: #2563eb;
+            color: white;
+        }
+
+        .submit {
+            width: 100%;
+            margin-top: 25px;
+            background: #dc2626;
+            color: white;
+            padding: 15px;
+            font-size: 16px;
+        }
+
+        .back {
+            background: #475569;
+            color: white;
+        }
+
+        #message {
+            margin-top: 18px;
+            font-weight: bold;
+        }
+
+        .coordinates {
+            font-size: 13px;
+            color: #475569;
+            margin-top: 8px;
+        }
+    </style>
+</head>
+
+<body>
+
+<header>
+    <strong>🚨 Smart Emergency Response</strong>
+    <button class="back"
+            onclick="location.href='dashboard.html'">
+        Dashboard
+    </button>
+</header>
+
+<main>
+
+    <div class="form-box">
+
+        <h1>Report an Emergency</h1>
+
+        <p class="subtitle">
+            Provide accurate information so the control room can respond quickly.
+        </p>
+
+        <form id="incidentForm">
+
+            <label for="type">
+                Emergency Type *
+            </label>
+
+            <select id="type" required>
+
+                <option value="">
+                    Select emergency type
+                </option>
+
+                <option value="Medical">
+                    🏥 Medical Emergency
+                </option>
+
+                <option value="Fire">
+                    🔥 Fire
+                </option>
+
+                <option value="Accident">
+                    🚗 Road Accident
+                </option>
+
+                <option value="Crime">
+                    🚔 Crime / Security
+                </option>
+
+                <option value="Natural Disaster">
+                    🌪️ Natural Disaster
+                </option>
+
+                <option value="Flood">
+                    🌊 Flood
+                </option>
+
+                <option value="Other">
+                    ⚠️ Other
+                </option>
+
+            </select>
+
+
+            <label for="severity">
+                Severity *
+            </label>
+
+            <select id="severity" required>
+
+                <option value="">
+                    Select severity
+                </option>
+
+                <option value="Low">
+                    Low
+                </option>
+
+                <option value="Medium">
+                    Medium
+                </option>
+
+                <option value="High">
+                    High
+                </option>
+
+                <option value="Critical">
+                    Critical
+                </option>
+
+            </select>
+
+
+            <label for="description">
+                Emergency Description *
+            </label>
+
+            <textarea
+                id="description"
+                maxlength="1000"
+                placeholder="Explain what happened, number of people affected, injuries, danger etc."
+                required></textarea>
+
+            <small>
+                Maximum 1000 characters.
+            </small>
+
+
+            <label>
+                Emergency Location *
+            </label>
+
+            <div class="location-box">
+
+                <button
+                    type="button"
+                    class="location-btn"
+                    id="locationBtn">
+
+                    📍 Get My Current Location
+
+                </button>
+
+                <div
+                    id="locationStatus"
+                    class="coordinates">
+
+                    Location not selected.
+
+                </div>
+
+            </div>
+
+
+            <label for="landmark">
+                Nearby Landmark / Address
+            </label>
+
+            <input
+                id="landmark"
+                type="text"
+                maxlength="250"
+                placeholder="Example: Near railway station">
+
+
+            <button
+                type="submit"
+                class="submit"
+                id="submitBtn">
+
+                🚨 Submit Emergency Report
+
+            </button>
+
+        </form>
+
+        <div id="message"></div>
+
+    </div>
+
+</main>
+
+
+<script type="module">
+
+import { auth, db } from "../firebase-config.js";
+
+import {
+    onAuthStateChanged
+} from "https://www.gstatic.com/firebasejs/12.0.0/firebase-auth.js";
+
+import {
+    ref,
+    get,
+    push,
+    set
+} from "https://www.gstatic.com/firebasejs/12.0.0/firebase-database.js";
+
+
+let currentUser = null;
+let userLocation = null;
+
+
+/* ================= AUTH ================= */
+
+onAuthStateChanged(auth, async (user) => {
+
+    if (!user) {
+
+        location.href = "../index.html";
+        return;
+
+    }
+
+    currentUser = user;
+
+    try {
+
+        const snapshot =
+            await get(ref(db, "users/" + user.uid));
+
+        if (!snapshot.exists()) {
+
+            alert("Citizen profile not found.");
+            location.href = "../index.html";
+            return;
+
+        }
+
+        if (snapshot.val().role !== "citizen") {
+
+            alert("Citizen access required.");
+            location.href = "../index.html";
+
+        }
+
+    } catch (error) {
+
+        console.error(error);
+
+    }
+
+});
+
+
+/* ================= LOCATION ================= */
+
+document.getElementById("locationBtn")
+.addEventListener("click", () => {
+
+    const status =
+        document.getElementById("locationStatus");
+
+    if (!navigator.geolocation) {
+
+        status.textContent =
+            "Geolocation is not supported.";
+
+        return;
+
+    }
+
+    status.textContent =
+        "Getting your location...";
+
+    navigator.geolocation.getCurrentPosition(
+
+        (position) => {
+
+            userLocation = {
+
+                latitude:
+                    position.coords.latitude,
+
+                longitude:
+                    position.coords.longitude
+
+            };
+
+            status.innerHTML = `
+                ✅ Location captured<br>
+                Latitude: ${userLocation.latitude.toFixed(6)}<br>
+                Longitude: ${userLocation.longitude.toFixed(6)}
+            `;
+
+        },
+
+        () => {
+
+            status.textContent =
+                "Unable to get location. Please allow location permission.";
+
+        },
+
+        {
+            enableHighAccuracy: true,
+            timeout: 10000,
+            maximumAge: 0
+        }
+
+    );
+
+});
+
+
+/* ================= SUBMIT ================= */
+
+document.getElementById("incidentForm")
+.addEventListener("submit", async (event) => {
+
+    event.preventDefault();
+
+    const message =
+        document.getElementById("message");
+
+    const submitBtn =
+        document.getElementById("submitBtn");
+
+    if (!currentUser) {
+
+        message.textContent =
+            "Please login first.";
+
+        return;
+
+    }
+
+    if (!userLocation) {
+
+        message.textContent =
+            "❌ Please capture your emergency location.";
+
+        return;
+
+    }
+
+    const type =
+        document.getElementById("type").value;
+
+    const severity =
+        document.getElementById("severity").value;
+
+    const description =
+        document.getElementById("description").value.trim();
+
+    const landmark =
+        document.getElementById("landmark").value.trim();
+
+    if (!type || !severity || !description) {
+
+        message.textContent =
+            "Please fill all required fields.";
+
+        return;
+
+    }
+
+
+    submitBtn.disabled = true;
+
+    submitBtn.textContent =
+        "Submitting...";
+
+
+    try {
+
+        const incidentRef =
+            push(ref(db, "incidents"));
+
+        const incidentId =
+            incidentRef.key;
+
+        const incident = {
+
+            incidentId: incidentId,
+
+            userId: currentUser.uid,
+
+            userEmail: currentUser.email,
+
+            type: type,
+
+            category: type,
+
+            severity: severity,
+
+            description: description,
+
+            landmark: landmark,
+
+            latitude:
+                userLocation.latitude,
+
+            longitude:
+                userLocation.longitude,
+
+            location: {
+
+                latitude:
+                    userLocation.latitude,
+
+                longitude:
+                    userLocation.longitude
+
+            },
+
+            status: "Reported",
+
+            priority:
+                severity === "Critical"
+                    ? "Critical"
+                    : severity === "High"
+                        ? "High"
+                        : "Normal",
+
+            source: "Citizen Report",
+
+            responderId: null,
+
+            responderName: null,
+
+            aiAnalysis: null,
+
+            createdAt:
+                new Date().toISOString(),
+
+            updatedAt:
+                new Date().toISOString()
+
+        };
+
+
+        await set(
+            incidentRef,
+            incident
+        );
+
+
+        await set(
+            ref(
+                db,
+                `userIncidents/${currentUser.uid}/${incidentId}`
+            ),
+            true
+        );
+
+
+        message.style.color = "green";
+
+        message.textContent =
+            "✅ Emergency reported successfully.";
+
+        setTimeout(() => {
+
+            location.href =
+                `tracking.html?id=${incidentId}`;
+
+        }, 1200);
+
+
+    } catch (error) {
+
+        console.error(error);
+
+        message.style.color = "red";
+
+        message.textContent =
+            "❌ Failed to submit emergency report.";
+
+        submitBtn.disabled = false;
+
+        submitBtn.textContent =
+            "🚨 Submit Emergency Report";
+
+    }
+
+});
+
+</script>
+
+</body>
+</html>

@@ -1,0 +1,758 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Emergency Incident | Responder</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+            font-family: Arial, sans-serif;
+        }
+
+        body {
+            margin: 0;
+            background: #f1f5f9;
+            color: #1e293b;
+        }
+
+        header {
+            background: #0f172a;
+            color: white;
+            padding: 18px 6%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        main {
+            max-width: 1000px;
+            margin: auto;
+            padding: 30px 20px;
+        }
+
+        .box {
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+            box-shadow: 0 5px 20px rgba(0,0,0,.06);
+        }
+
+        .status {
+            text-align: center;
+        }
+
+        .status h1 {
+            color: #2563eb;
+        }
+
+        .details {
+            line-height: 1.8;
+            color: #475569;
+        }
+
+        .actions {
+            display: grid;
+            grid-template-columns:
+                repeat(auto-fit, minmax(160px,1fr));
+            gap: 12px;
+            margin-top: 20px;
+        }
+
+        .action {
+            color: white;
+            background: #2563eb;
+        }
+
+        .accepted {
+            background: #7c3aed;
+        }
+
+        .way {
+            background: #d97706;
+        }
+
+        .arrived {
+            background: #0891b2;
+        }
+
+        .resolved {
+            background: #16a34a;
+        }
+
+        .danger {
+            background: #dc2626;
+        }
+
+        button:disabled {
+            opacity: .5;
+            cursor: not-allowed;
+        }
+
+        .location {
+            background: #eff6ff;
+            padding: 18px;
+            border-radius: 10px;
+        }
+
+        .map {
+            background: #2563eb;
+            color: white;
+            margin-top: 10px;
+        }
+
+        .message {
+            margin-top: 15px;
+            font-weight: bold;
+        }
+
+        .timeline {
+            margin-top: 20px;
+        }
+
+        .step {
+            padding: 13px 15px;
+            border-left: 3px solid #cbd5e1;
+            margin-left: 8px;
+        }
+
+        .step.done {
+            border-left-color: #16a34a;
+        }
+    </style>
+</head>
+
+<body>
+
+<header>
+
+    <strong>
+        🚑 Emergency Response
+    </strong>
+
+    <button
+        onclick="location.href='assignments.html'"
+        style="
+            background:#475569;
+            color:white;
+            border:none;
+            padding:10px 15px;
+            border-radius:8px;
+            cursor:pointer;
+        ">
+
+        Assignments
+
+    </button>
+
+</header>
+
+
+<main>
+
+    <section class="box status">
+
+        <p>
+            Current Incident Status
+        </p>
+
+        <h1 id="status">
+            Loading...
+        </h1>
+
+        <p id="updated">
+            Waiting for incident data...
+        </p>
+
+    </section>
+
+
+    <section class="box">
+
+        <h2>
+            Emergency Details
+        </h2>
+
+        <div
+            id="details"
+            class="details">
+
+            Loading...
+
+        </div>
+
+    </section>
+
+
+    <section class="box">
+
+        <h2>
+            Response Actions
+        </h2>
+
+        <div class="actions">
+
+            <button
+                class="action accepted"
+                id="acceptBtn">
+
+                Accept
+
+            </button>
+
+            <button
+                class="action way"
+                id="wayBtn">
+
+                On The Way
+
+            </button>
+
+            <button
+                class="action arrived"
+                id="arrivedBtn">
+
+                Arrived
+
+            </button>
+
+            <button
+                class="action resolved"
+                id="resolvedBtn">
+
+                Resolve Emergency
+
+            </button>
+
+        </div>
+
+        <div
+            id="message"
+            class="message">
+        </div>
+
+    </section>
+
+
+    <section class="box">
+
+        <h2>
+            Emergency Location
+        </h2>
+
+        <div
+            id="location"
+            class="location">
+
+            Loading...
+
+        </div>
+
+        <button
+            id="mapBtn"
+            class="map">
+
+            🗺️ Open Emergency Location
+
+        </button>
+
+    </section>
+
+
+    <section class="box">
+
+        <h2>
+            Response Timeline
+        </h2>
+
+        <div class="timeline">
+
+            <div class="step" id="stepReported">
+                🚨 Emergency Reported
+            </div>
+
+            <div class="step" id="stepAccepted">
+                ✅ Responder Accepted
+            </div>
+
+            <div class="step" id="stepWay">
+                🚑 Responder On The Way
+            </div>
+
+            <div class="step" id="stepArrived">
+                📍 Responder Arrived
+            </div>
+
+            <div class="step" id="stepResolved">
+                ✔ Emergency Resolved
+            </div>
+
+        </div>
+
+    </section>
+
+</main>
+
+
+<script type="module">
+
+import { auth, db } from "../firebase-config.js";
+
+import {
+    onAuthStateChanged
+} from "https://www.gstatic.com/firebasejs/12.0.0/firebase-auth.js";
+
+import {
+    ref,
+    get,
+    update,
+    onValue
+} from "https://www.gstatic.com/firebasejs/12.0.0/firebase-database.js";
+
+
+let currentUser = null;
+let incidentId = null;
+let incident = null;
+
+
+const params =
+    new URLSearchParams(location.search);
+
+incidentId =
+    params.get("id");
+
+
+if (!incidentId) {
+
+    alert("Incident ID missing.");
+
+    location.href =
+        "assignments.html";
+
+}
+
+
+/* ================= AUTH ================= */
+
+onAuthStateChanged(auth, async (user) => {
+
+    if (!user) {
+
+        location.href = "../index.html";
+        return;
+
+    }
+
+    currentUser = user;
+
+
+    const profile =
+        await get(
+            ref(db, "users/" + user.uid)
+        );
+
+
+    if (
+        !profile.exists() ||
+        profile.val().role !== "responder"
+    ) {
+
+        alert("Responder access required.");
+
+        location.href =
+            "../index.html";
+
+        return;
+
+    }
+
+
+    listenToIncident();
+
+});
+
+
+/* ================= INCIDENT LISTENER ================= */
+
+function listenToIncident() {
+
+    onValue(
+        ref(db, "incidents/" + incidentId),
+        (snapshot) => {
+
+            if (!snapshot.exists()) {
+
+                alert("Incident no longer exists.");
+
+                location.href =
+                    "assignments.html";
+
+                return;
+
+            }
+
+
+            incident =
+                snapshot.val();
+
+
+            /* IMPORTANT SECURITY CHECK */
+
+            if (
+                incident.responderId !==
+                currentUser.uid
+            ) {
+
+                alert(
+                    "This incident is not assigned to you."
+                );
+
+                location.href =
+                    "assignments.html";
+
+                return;
+
+            }
+
+
+            render();
+
+        }
+    );
+
+}
+
+
+/* ================= RENDER ================= */
+
+function render() {
+
+    const status =
+        incident.status || "Assigned";
+
+
+    document.getElementById("status")
+        .textContent = status;
+
+
+    document.getElementById("updated")
+        .textContent =
+        "Last updated: " +
+        formatDate(incident.updatedAt);
+
+
+    document.getElementById("details")
+        .innerHTML = `
+
+            <strong>Type:</strong>
+            ${escapeHTML(
+                incident.type || "Emergency"
+            )}
+
+            <br>
+
+            <strong>Category:</strong>
+            ${escapeHTML(
+                incident.category || "Emergency"
+            )}
+
+            <br>
+
+            <strong>Severity:</strong>
+            ${escapeHTML(
+                incident.severity || "Unknown"
+            )}
+
+            <br>
+
+            <strong>Priority:</strong>
+            ${escapeHTML(
+                incident.priority || "Normal"
+            )}
+
+            <br>
+
+            <strong>Description:</strong>
+            ${escapeHTML(
+                incident.description ||
+                "No description"
+            )}
+
+            <br>
+
+            <strong>Landmark:</strong>
+            ${escapeHTML(
+                incident.landmark ||
+                "Not provided"
+            )}
+
+            <br>
+
+            <strong>Reported:</strong>
+            ${formatDate(
+                incident.createdAt
+            )}
+
+        `;
+
+
+    const lat =
+        incident.latitude;
+
+    const lng =
+        incident.longitude;
+
+
+    if (
+        typeof lat === "number" &&
+        typeof lng === "number"
+    ) {
+
+        document.getElementById("location")
+            .innerHTML = `
+
+                Latitude:
+                ${lat.toFixed(6)}
+
+                <br>
+
+                Longitude:
+                ${lng.toFixed(6)}
+
+            `;
+
+
+        document.getElementById("mapBtn")
+            .onclick = () => {
+
+                window.open(
+                    `https://www.google.com/maps?q=${lat},${lng}`,
+                    "_blank"
+                );
+
+            };
+
+    }
+
+
+    updateButtons(status);
+
+    updateTimeline(status);
+
+}
+
+
+/* ================= STATUS UPDATE ================= */
+
+async function changeStatus(newStatus) {
+
+    if (!incident) return;
+
+
+    const message =
+        document.getElementById("message");
+
+
+    try {
+
+        await update(
+            ref(
+                db,
+                "incidents/" + incidentId
+            ),
+            {
+
+                status: newStatus,
+
+                updatedAt:
+                    new Date().toISOString()
+
+            }
+        );
+
+
+        message.style.color =
+            "green";
+
+
+        message.textContent =
+            `Status updated to "${newStatus}".`;
+
+
+    } catch (error) {
+
+        console.error(error);
+
+        message.style.color =
+            "red";
+
+
+        message.textContent =
+            "Unable to update status.";
+
+    }
+
+}
+
+
+/* ================= BUTTONS ================= */
+
+document.getElementById("acceptBtn")
+.addEventListener(
+    "click",
+    () => changeStatus("Accepted")
+);
+
+
+document.getElementById("wayBtn")
+.addEventListener(
+    "click",
+    () => changeStatus("On the Way")
+);
+
+
+document.getElementById("arrivedBtn")
+.addEventListener(
+    "click",
+    () => changeStatus("Arrived")
+);
+
+
+document.getElementById("resolvedBtn")
+.addEventListener(
+    "click",
+    async () => {
+
+        const confirmResolve =
+            confirm(
+                "Are you sure this emergency has been resolved?"
+            );
+
+        if (!confirmResolve) return;
+
+        await changeStatus("Resolved");
+
+    }
+);
+
+
+/* ================= BUTTON STATE ================= */
+
+function updateButtons(status) {
+
+    const accept =
+        document.getElementById("acceptBtn");
+
+    const way =
+        document.getElementById("wayBtn");
+
+    const arrived =
+        document.getElementById("arrivedBtn");
+
+    const resolved =
+        document.getElementById("resolvedBtn");
+
+
+    accept.disabled =
+        status !== "Assigned";
+
+
+    way.disabled =
+        status !== "Accepted";
+
+
+    arrived.disabled =
+        status !== "On the Way";
+
+
+    resolved.disabled =
+        status !== "Arrived";
+
+}
+
+
+/* ================= TIMELINE ================= */
+
+function updateTimeline(status) {
+
+    const progress = {
+
+        "Assigned": 1,
+        "Accepted": 2,
+        "On the Way": 3,
+        "Arrived": 4,
+        "Resolved": 5
+
+    };
+
+
+    const current =
+        progress[status] || 1;
+
+
+    const ids = [
+
+        "stepReported",
+        "stepAccepted",
+        "stepWay",
+        "stepArrived",
+        "stepResolved"
+
+    ];
+
+
+    ids.forEach((id, index) => {
+
+        const element =
+            document.getElementById(id);
+
+
+        if (index + 1 <= current) {
+
+            element.classList.add("done");
+
+        } else {
+
+            element.classList.remove("done");
+
+        }
+
+    });
+
+}
+
+
+/* ================= HELPERS ================= */
+
+function formatDate(value) {
+
+    if (!value) return "Unknown";
+
+    const date =
+        new Date(value);
+
+    if (isNaN(date)) return "Unknown";
+
+    return date.toLocaleString();
+
+}
+
+
+function escapeHTML(value) {
+
+    return String(value)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+
+}
+
+</script>
+
+</body>
+</html>

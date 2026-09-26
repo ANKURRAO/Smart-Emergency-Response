@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Track Emergency | Smart Emergency Response</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+            font-family: Arial, sans-serif;
+        }
+
+        body {
+            margin: 0;
+            background: #f1f5f9;
+            color: #1e293b;
+        }
+
+        header {
+            background: #0f172a;
+            color: white;
+            padding: 18px 6%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        main {
+            max-width: 1000px;
+            margin: auto;
+            padding: 30px 20px;
+        }
+
+        .box {
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+            box-shadow: 0 5px 20px rgba(0,0,0,.06);
+        }
+
+        .status-main {
+            text-align: center;
+            padding: 25px;
+        }
+
+        .status-main h1 {
+            color: #2563eb;
+        }
+
+        .timeline {
+            margin-top: 25px;
+        }
+
+        .step {
+            position: relative;
+            padding: 15px 15px 15px 40px;
+            border-left: 3px solid #cbd5e1;
+        }
+
+        .step::before {
+            content: "";
+            position: absolute;
+            left: -8px;
+            top: 15px;
+            width: 13px;
+            height: 13px;
+            border-radius: 50%;
+            background: #cbd5e1;
+        }
+
+        .step.active {
+            border-left-color: #2563eb;
+        }
+
+        .step.active::before {
+            background: #2563eb;
+        }
+
+        .step.done::before {
+            background: #16a34a;
+        }
+
+        .details {
+            line-height: 1.8;
+            color: #475569;
+        }
+
+        .responder {
+            background: #eff6ff;
+            padding: 18px;
+            border-radius: 10px;
+        }
+
+        button {
+            border: none;
+            border-radius: 8px;
+            padding: 11px 16px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        .back {
+            background: #475569;
+            color: white;
+        }
+
+        .map-link {
+            background: #2563eb;
+            color: white;
+            margin-top: 10px;
+        }
+
+        .error {
+            color: #dc2626;
+        }
+    </style>
+</head>
+
+<body>
+
+<header>
+
+    <strong>🚨 Emergency Tracking</strong>
+
+    <button class="back"
+            onclick="location.href='dashboard.html'">
+        Dashboard
+    </button>
+
+</header>
+
+
+<main>
+
+    <section class="box status-main">
+
+        <p>Current Emergency Status</p>
+
+        <h1 id="currentStatus">
+            Loading...
+        </h1>
+
+        <p id="lastUpdated">
+            Checking latest update...
+        </p>
+
+    </section>
+
+
+    <section class="box">
+
+        <h2>Emergency Details</h2>
+
+        <div
+            id="incidentDetails"
+            class="details">
+
+            Loading...
+
+        </div>
+
+    </section>
+
+
+    <section class="box">
+
+        <h2>Response Progress</h2>
+
+        <div class="timeline">
+
+            <div class="step" id="reportedStep">
+                <strong>Emergency Reported</strong>
+                <p>Your emergency has been submitted.</p>
+            </div>
+
+            <div class="step" id="acceptedStep">
+                <strong>Responder Accepted</strong>
+                <p>A responder has accepted the emergency.</p>
+            </div>
+
+            <div class="step" id="onwayStep">
+                <strong>Responder On The Way</strong>
+                <p>The responder is travelling to your location.</p>
+            </div>
+
+            <div class="step" id="arrivedStep">
+                <strong>Responder Arrived</strong>
+                <p>The responder has reached the location.</p>
+            </div>
+
+            <div class="step" id="resolvedStep">
+                <strong>Emergency Resolved</strong>
+                <p>The emergency response has been completed.</p>
+            </div>
+
+        </div>
+
+    </section>
+
+
+    <section class="box">
+
+        <h2>Responder Information</h2>
+
+        <div
+            id="responderInfo"
+            class="responder">
+
+            No responder assigned yet.
+
+        </div>
+
+    </section>
+
+
+    <section class="box">
+
+        <h2>Emergency Location</h2>
+
+        <div id="locationDetails">
+            Loading location...
+        </div>
+
+        <button
+            class="map-link"
+            id="mapButton">
+
+            🗺️ Open Location in Map
+
+        </button>
+
+    </section>
+
+</main>
+
+
+<script type="module">
+
+import { auth, db } from "../firebase-config.js";
+
+import {
+    onAuthStateChanged
+} from "https://www.gstatic.com/firebasejs/12.0.0/firebase-auth.js";
+
+import {
+    ref,
+    onValue
+} from "https://www.gstatic.com/firebasejs/12.0.0/firebase-database.js";
+
+
+let currentUser = null;
+let incidentId = null;
+let incidentData = null;
+
+
+/* ================= GET INCIDENT ID ================= */
+
+const params =
+    new URLSearchParams(location.search);
+
+incidentId =
+    params.get("id");
+
+
+if (!incidentId) {
+
+    document.getElementById("currentStatus")
+        .textContent =
+        "No incident selected.";
+
+}
+
+
+/* ================= AUTH ================= */
+
+onAuthStateChanged(auth, (user) => {
+
+    if (!user) {
+
+        location.href = "../index.html";
+        return;
+
+    }
+
+    currentUser = user;
+
+    if (incidentId) {
+
+        listenToIncident();
+
+    }
+
+});
+
+
+/* ================= REALTIME INCIDENT ================= */
+
+function listenToIncident() {
+
+    const incidentRef =
+        ref(db, "incidents/" + incidentId);
+
+
+    onValue(
+        incidentRef,
+        (snapshot) => {
+
+            if (!snapshot.exists()) {
+
+                document.getElementById("currentStatus")
+                    .textContent =
+                    "Incident not found.";
+
+                return;
+
+            }
+
+
+            incidentData =
+                snapshot.val();
+
+
+            /* USER SECURITY CHECK */
+
+            if (
+                incidentData.userId !==
+                currentUser.uid
+            ) {
+
+                document.getElementById("currentStatus")
+                    .textContent =
+                    "Access denied.";
+
+                return;
+
+            }
+
+
+            renderIncident();
+
+        },
+
+        (error) => {
+
+            console.error(error);
+
+            document.getElementById("currentStatus")
+                .textContent =
+                "Unable to load incident.";
+
+        }
+
+    );
+
+}
+
+
+/* ================= RENDER ================= */
+
+function renderIncident() {
+
+    const status =
+        incidentData.status || "Reported";
+
+
+    document.getElementById("currentStatus")
+        .textContent = status;
+
+
+    document.getElementById("lastUpdated")
+        .textContent =
+        "Last updated: " +
+        formatDate(incidentData.updatedAt);
+
+
+    document.getElementById("incidentDetails")
+        .innerHTML = `
+
+            <strong>Emergency:</strong>
+            ${escapeHTML(incidentData.type || "Emergency")}
+
+            <br>
+
+            <strong>Severity:</strong>
+            ${escapeHTML(incidentData.severity || "Unknown")}
+
+            <br>
+
+            <strong>Description:</strong>
+            ${escapeHTML(incidentData.description || "N/A")}
+
+            <br>
+
+            <strong>Reported:</strong>
+            ${formatDate(incidentData.createdAt)}
+
+            <br>
+
+            <strong>Priority:</strong>
+            ${escapeHTML(incidentData.priority || "Normal")}
+
+        `;
+
+
+    updateTimeline(status);
+
+
+    /* RESPONDER */
+
+    if (incidentData.responderId) {
+
+        document.getElementById("responderInfo")
+            .innerHTML = `
+
+                <strong>Responder Assigned</strong>
+
+                <br><br>
+
+                <strong>Name:</strong>
+                ${escapeHTML(
+                    incidentData.responderName ||
+                    "Responder"
+                )}
+
+                <br>
+
+                <strong>Responder ID:</strong>
+                ${escapeHTML(
+                    incidentData.responderId
+                )}
+
+                <br>
+
+                <p>
+                    Your emergency is being handled
+                    by the assigned responder.
+                </p>
+
+            `;
+
+    } else {
+
+        document.getElementById("responderInfo")
+            .textContent =
+            "No responder assigned yet.";
+
+    }
+
+
+    /* LOCATION */
+
+    const lat =
+        incidentData.latitude;
+
+    const lng =
+        incidentData.longitude;
+
+
+    if (
+        typeof lat === "number" &&
+        typeof lng === "number"
+    ) {
+
+        document.getElementById("locationDetails")
+            .innerHTML = `
+
+                Latitude: ${lat.toFixed(6)}
+                <br>
+                Longitude: ${lng.toFixed(6)}
+
+            `;
+
+
+        document.getElementById("mapButton")
+            .onclick = () => {
+
+                window.open(
+                    `https://www.google.com/maps?q=${lat},${lng}`,
+                    "_blank"
+                );
+
+            };
+
+    }
+
+}
+
+
+/* ================= TIMELINE ================= */
+
+function updateTimeline(status) {
+
+    const states = {
+
+        "Reported": 1,
+        "Assigned": 2,
+        "Accepted": 2,
+        "On the Way": 3,
+        "Arrived": 4,
+        "Resolved": 5
+
+    };
+
+
+    const current =
+        states[status] || 1;
+
+
+    const steps = [
+
+        "reportedStep",
+        "acceptedStep",
+        "onwayStep",
+        "arrivedStep",
+        "resolvedStep"
+
+    ];
+
+
+    steps.forEach((id, index) => {
+
+        const element =
+            document.getElementById(id);
+
+        const stepNumber =
+            index + 1;
+
+
+        element.classList.remove(
+            "active",
+            "done"
+        );
+
+
+        if (stepNumber < current) {
+
+            element.classList.add("done");
+
+        } else if (stepNumber === current) {
+
+            element.classList.add("active");
+
+        }
+
+    });
+
+}
+
+
+/* ================= HELPERS ================= */
+
+function formatDate(value) {
+
+    if (!value) return "Unknown";
+
+    const date =
+        new Date(value);
+
+    if (isNaN(date)) return "Unknown";
+
+    return date.toLocaleString();
+
+}
+
+
+function escapeHTML(value) {
+
+    return String(value)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+
+}
+
+</script>
+
+</body>
+</html>

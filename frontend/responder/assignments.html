@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Assignments | Smart Emergency Response</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+            font-family: Arial, sans-serif;
+        }
+
+        body {
+            margin: 0;
+            background: #f1f5f9;
+            color: #1e293b;
+        }
+
+        header {
+            background: #0f172a;
+            color: white;
+            padding: 18px 6%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        main {
+            max-width: 1100px;
+            margin: auto;
+            padding: 30px 20px;
+        }
+
+        .toolbar {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin: 20px 0;
+        }
+
+        select {
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid #cbd5e1;
+        }
+
+        .incident {
+            background: white;
+            padding: 22px;
+            border-radius: 14px;
+            margin-bottom: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,.06);
+        }
+
+        .header-row {
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .badge {
+            padding: 6px 11px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+            background: #dbeafe;
+            color: #1d4ed8;
+        }
+
+        .critical {
+            background: #fee2e2;
+            color: #b91c1c;
+        }
+
+        button {
+            border: none;
+            padding: 10px 15px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        .open {
+            background: #2563eb;
+            color: white;
+        }
+
+        .back {
+            background: #475569;
+            color: white;
+        }
+
+        .empty {
+            background: white;
+            padding: 35px;
+            text-align: center;
+            border-radius: 14px;
+        }
+    </style>
+</head>
+
+<body>
+
+<header>
+
+    <strong>
+        🚑 Responder Assignments
+    </strong>
+
+    <button
+        class="back"
+        onclick="location.href='dashboard.html'">
+
+        Dashboard
+
+    </button>
+
+</header>
+
+
+<main>
+
+    <h1>
+        Assigned Emergencies
+    </h1>
+
+    <p>
+        Manage all emergencies assigned to you.
+    </p>
+
+
+    <div class="toolbar">
+
+        <select id="filter">
+
+            <option value="all">
+                All Assignments
+            </option>
+
+            <option value="active">
+                Active
+            </option>
+
+            <option value="Resolved">
+                Resolved
+            </option>
+
+            <option value="Accepted">
+                Accepted
+            </option>
+
+            <option value="On the Way">
+                On The Way
+            </option>
+
+            <option value="Arrived">
+                Arrived
+            </option>
+
+        </select>
+
+    </div>
+
+
+    <section id="list">
+
+        Loading assignments...
+
+    </section>
+
+</main>
+
+
+<script type="module">
+
+import { auth, db } from "../firebase-config.js";
+
+import {
+    onAuthStateChanged
+} from "https://www.gstatic.com/firebasejs/12.0.0/firebase-auth.js";
+
+import {
+    ref,
+    get,
+    query,
+    orderByChild,
+    equalTo,
+    onValue
+} from "https://www.gstatic.com/firebasejs/12.0.0/firebase-database.js";
+
+
+let currentUser = null;
+let incidents = [];
+
+
+/* ================= AUTH ================= */
+
+onAuthStateChanged(auth, async (user) => {
+
+    if (!user) {
+
+        location.href = "../index.html";
+        return;
+
+    }
+
+    currentUser = user;
+
+
+    const profileSnapshot =
+        await get(
+            ref(db, "users/" + user.uid)
+        );
+
+
+    if (
+        !profileSnapshot.exists() ||
+        profileSnapshot.val().role !== "responder"
+    ) {
+
+        alert("Responder access required.");
+
+        location.href =
+            "../index.html";
+
+        return;
+
+    }
+
+
+    loadAssignments();
+
+});
+
+
+/* ================= LOAD ================= */
+
+function loadAssignments() {
+
+    const q =
+        query(
+            ref(db, "incidents"),
+            orderByChild("responderId"),
+            equalTo(currentUser.uid)
+        );
+
+
+    onValue(q, (snapshot) => {
+
+        incidents = [];
+
+
+        snapshot.forEach(child => {
+
+            incidents.push({
+                id: child.key,
+                ...child.val()
+            });
+
+        });
+
+
+        incidents.sort(
+            (a,b) =>
+                new Date(b.createdAt || 0) -
+                new Date(a.createdAt || 0)
+        );
+
+
+        render();
+
+    });
+
+}
+
+
+/* ================= FILTER ================= */
+
+document.getElementById("filter")
+.addEventListener("change", render);
+
+
+function render() {
+
+    const list =
+        document.getElementById("list");
+
+    const filter =
+        document.getElementById("filter").value;
+
+
+    let filtered =
+        incidents;
+
+
+    if (filter === "active") {
+
+        filtered =
+            incidents.filter(
+                item =>
+                    item.status !== "Resolved"
+            );
+
+    } else if (filter !== "all") {
+
+        filtered =
+            incidents.filter(
+                item =>
+                    item.status === filter
+            );
+
+    }
+
+
+    if (filtered.length === 0) {
+
+        list.innerHTML = `
+            <div class="empty">
+                No assignments found.
+            </div>
+        `;
+
+        return;
+
+    }
+
+
+    list.innerHTML = "";
+
+
+    filtered.forEach(incident => {
+
+        const div =
+            document.createElement("div");
+
+        div.className =
+            "incident";
+
+
+        const critical =
+            incident.severity === "Critical"
+                ? "critical"
+                : "";
+
+
+        div.innerHTML = `
+
+            <div class="header-row">
+
+                <div>
+
+                    <h2>
+                        ${escapeHTML(
+                            incident.type ||
+                            "Emergency"
+                        )}
+                    </h2>
+
+                    <small>
+                        Incident ID:
+                        ${escapeHTML(incident.id)}
+                    </small>
+
+                </div>
+
+                <span class="badge ${critical}">
+                    ${escapeHTML(
+                        incident.severity ||
+                        "Unknown"
+                    )}
+                </span>
+
+            </div>
+
+
+            <p>
+                ${escapeHTML(
+                    incident.description ||
+                    "No description"
+                )}
+            </p>
+
+
+            <strong>
+                Status:
+            </strong>
+
+            ${escapeHTML(
+                incident.status ||
+                "Assigned"
+            )}
+
+
+            <br><br>
+
+
+            <button
+                class="open"
+                onclick="
+                    location.href=
+                    'incident.html?id=${encodeURIComponent(
+                        incident.id
+                    )}'
+                ">
+
+                View Incident
+
+            </button>
+
+        `;
+
+
+        list.appendChild(div);
+
+    });
+
+}
+
+
+/* ================= SECURITY ================= */
+
+function escapeHTML(value) {
+
+    return String(value)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+
+}
+
+</script>
+
+</body>
+</html>

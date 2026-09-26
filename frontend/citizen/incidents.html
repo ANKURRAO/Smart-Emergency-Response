@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>My Incidents | Smart Emergency Response</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+            font-family: Arial, sans-serif;
+        }
+
+        body {
+            margin: 0;
+            background: #f1f5f9;
+            color: #1e293b;
+        }
+
+        header {
+            background: #0f172a;
+            color: white;
+            padding: 18px 6%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        main {
+            max-width: 1100px;
+            margin: auto;
+            padding: 30px 20px;
+        }
+
+        .top {
+            margin-bottom: 25px;
+        }
+
+        .top p {
+            color: #64748b;
+        }
+
+        .incident {
+            background: white;
+            padding: 22px;
+            margin-bottom: 16px;
+            border-radius: 14px;
+            box-shadow: 0 4px 15px rgba(0,0,0,.06);
+        }
+
+        .incident-header {
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .status {
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+            background: #dbeafe;
+            color: #1d4ed8;
+        }
+
+        .critical {
+            background: #fee2e2;
+            color: #b91c1c;
+        }
+
+        .details {
+            margin-top: 15px;
+            line-height: 1.7;
+            color: #475569;
+        }
+
+        button {
+            border: none;
+            border-radius: 8px;
+            padding: 10px 15px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        .track {
+            background: #2563eb;
+            color: white;
+        }
+
+        .back {
+            background: #475569;
+            color: white;
+        }
+
+        .empty {
+            background: white;
+            padding: 40px;
+            text-align: center;
+            border-radius: 14px;
+        }
+    </style>
+</head>
+
+<body>
+
+<header>
+
+    <strong>🚨 Smart Emergency Response</strong>
+
+    <button class="back"
+            onclick="location.href='dashboard.html'">
+        Dashboard
+    </button>
+
+</header>
+
+
+<main>
+
+    <section class="top">
+
+        <h1>My Emergency Reports</h1>
+
+        <p>
+            View and track all emergencies reported from your account.
+        </p>
+
+    </section>
+
+
+    <section id="incidentList">
+
+        Loading incidents...
+
+    </section>
+
+</main>
+
+
+<script type="module">
+
+import { auth, db } from "../firebase-config.js";
+
+import {
+    onAuthStateChanged
+} from "https://www.gstatic.com/firebasejs/12.0.0/firebase-auth.js";
+
+import {
+    ref,
+    get,
+    query,
+    orderByChild,
+    equalTo
+} from "https://www.gstatic.com/firebasejs/12.0.0/firebase-database.js";
+
+
+let currentUser = null;
+
+
+/* ================= AUTH ================= */
+
+onAuthStateChanged(auth, async (user) => {
+
+    if (!user) {
+
+        location.href = "../index.html";
+        return;
+
+    }
+
+    currentUser = user;
+
+    loadIncidents();
+
+});
+
+
+/* ================= LOAD ================= */
+
+async function loadIncidents() {
+
+    const container =
+        document.getElementById("incidentList");
+
+    try {
+
+        const incidentsQuery = query(
+            ref(db, "incidents"),
+            orderByChild("userId"),
+            equalTo(currentUser.uid)
+        );
+
+        const snapshot =
+            await get(incidentsQuery);
+
+        if (!snapshot.exists()) {
+
+            container.innerHTML = `
+                <div class="empty">
+                    <h2>No emergency reports</h2>
+                    <p>You have not reported any emergency yet.</p>
+                    <br>
+                    <button class="track"
+                        onclick="location.href='report.html'">
+                        Report Emergency
+                    </button>
+                </div>
+            `;
+
+            return;
+
+        }
+
+
+        const incidents = [];
+
+        snapshot.forEach(child => {
+
+            incidents.push({
+                id: child.key,
+                ...child.val()
+            });
+
+        });
+
+
+        incidents.sort(
+            (a,b) =>
+                new Date(b.createdAt || 0) -
+                new Date(a.createdAt || 0)
+        );
+
+
+        container.innerHTML = "";
+
+
+        incidents.forEach(incident => {
+
+            const article =
+                document.createElement("article");
+
+            article.className = "incident";
+
+
+            const severityClass =
+                incident.severity === "Critical"
+                    ? "critical"
+                    : "";
+
+
+            article.innerHTML = `
+
+                <div class="incident-header">
+
+                    <div>
+
+                        <h2>
+                            ${escapeHTML(
+                                incident.type || "Emergency"
+                            )}
+                        </h2>
+
+                        <small>
+                            ID: ${escapeHTML(incident.id)}
+                        </small>
+
+                    </div>
+
+                    <span class="status ${severityClass}">
+                        ${escapeHTML(
+                            incident.status || "Reported"
+                        )}
+                    </span>
+
+                </div>
+
+
+                <div class="details">
+
+                    <strong>Severity:</strong>
+                    ${escapeHTML(
+                        incident.severity || "Unknown"
+                    )}
+
+                    <br>
+
+                    <strong>Description:</strong>
+                    ${escapeHTML(
+                        incident.description || "N/A"
+                    )}
+
+                    <br>
+
+                    <strong>Reported:</strong>
+                    ${formatDate(incident.createdAt)}
+
+                    <br>
+
+                    <strong>Responder:</strong>
+                    ${escapeHTML(
+                        incident.responderName ||
+                        "Not assigned yet"
+                    )}
+
+                </div>
+
+
+                <br>
+
+                <button
+                    class="track"
+                    onclick="
+                        location.href=
+                        'tracking.html?id=${encodeURIComponent(incident.id)}'
+                    ">
+
+                    📍 Track Incident
+
+                </button>
+
+            `;
+
+
+            container.appendChild(article);
+
+        });
+
+
+    } catch (error) {
+
+        console.error(error);
+
+        container.innerHTML =
+            "<p>Unable to load incidents.</p>";
+
+    }
+
+}
+
+
+/* ================= HELPERS ================= */
+
+function formatDate(value) {
+
+    if (!value) return "Unknown";
+
+    const date = new Date(value);
+
+    if (isNaN(date)) return "Unknown";
+
+    return date.toLocaleString();
+
+}
+
+
+function escapeHTML(value) {
+
+    return String(value)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+
+}
+
+</script>
+
+</body>
+</html>

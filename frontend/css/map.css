@@ -1,0 +1,355 @@
+/* =========================================================
+   MAP / LOCATION CSS
+   ========================================================= */
+
+.map-page {
+    min-height: 100vh;
+    background: #f4f7fb;
+}
+
+/* ---------- MAP CONTAINER ---------- */
+
+.map-container {
+    width: 100%;
+    height: 600px;
+
+    background: #e2e8f0;
+
+    border: 1px solid #cbd5e1;
+    border-radius: 15px;
+
+    overflow: hidden;
+
+    position: relative;
+}
+
+#map {
+    width: 100%;
+    height: 100%;
+}
+
+/* ---------- MAP TOOLBAR ---------- */
+
+.map-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    gap: 15px;
+
+    background: white;
+
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+
+    padding: 12px 15px;
+
+    margin-bottom: 15px;
+}
+
+.map-toolbar-left,
+.map-toolbar-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* ---------- MAP FILTERS ---------- */
+
+.map-filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.map-filter {
+    padding: 8px 12px;
+
+    background: white;
+
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+
+    color: #475569;
+
+    font-size: 13px;
+    font-weight: 700;
+
+    cursor: pointer;
+}
+
+.map-filter.active {
+    background: #2563eb;
+    border-color: #2563eb;
+    color: white;
+}
+
+/* ---------- MAP LEGEND ---------- */
+
+.map-legend {
+    position: absolute;
+
+    bottom: 15px;
+    left: 15px;
+
+    background: white;
+
+    border-radius: 10px;
+
+    padding: 12px 14px;
+
+    box-shadow: 0 5px 20px rgba(15, 23, 42, 0.15);
+
+    z-index: 500;
+}
+
+.legend-title {
+    font-size: 12px;
+    font-weight: 900;
+
+    margin-bottom: 8px;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    font-size: 12px;
+
+    margin-top: 6px;
+}
+
+.legend-dot {
+    width: 10px;
+    height: 10px;
+
+    border-radius: 50%;
+}
+
+.legend-emergency {
+    background: #dc2626;
+}
+
+.legend-responder {
+    background: #2563eb;
+}
+
+.legend-hospital {
+    background: #16a34a;
+}
+
+/* ---------- LOCATION CARD ---------- */
+
+.location-card {
+    background: white;
+
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+
+    padding: 18px;
+}
+
+.coordinates {
+    font-family: monospace;
+
+    background: #f8fafc;
+
+    border-radius: 8px;
+
+    padding: 10px;
+
+    color: #475569;
+
+    font-size: 13px;
+}
+
+/* ---------- MAP SIDEBAR ---------- */
+
+.map-layout {
+    display: grid;
+
+    grid-template-columns: 1fr 320px;
+
+    gap: 15px;
+}
+
+.map-sidebar {
+    background: white;
+
+    border: 1px solid #e2e8f0;
+    border-radius: 15px;
+
+    padding: 15px;
+
+    max-height: 600px;
+    overflow-y: auto;
+}
+
+.map-sidebar-title {
+    font-size: 17px;
+    font-weight: 900;
+
+    margin-bottom: 15px;
+}
+
+.map-location-item {
+    padding: 13px;
+
+    border: 1px solid #e2e8f0;
+    border-radius: 9px;
+
+    margin-bottom: 10px;
+
+    cursor: pointer;
+
+    transition: 0.2s ease;
+}
+
+.map-location-item:hover {
+    border-color: #2563eb;
+    background: #eff6ff;
+}
+
+.map-location-name {
+    font-size: 14px;
+    font-weight: 800;
+}
+
+.map-location-meta {
+    color: #64748b;
+    font-size: 12px;
+
+    margin-top: 3px;
+}
+
+/* ---------- CUSTOM MARKER ---------- */
+
+.map-marker {
+    width: 36px;
+    height: 36px;
+
+    border-radius: 50%;
+
+    display: grid;
+    place-items: center;
+
+    font-size: 16px;
+
+    border: 3px solid white;
+
+    box-shadow: 0 3px 10px rgba(15, 23, 42, 0.3);
+}
+
+.marker-emergency {
+    background: #dc2626;
+    color: white;
+}
+
+.marker-responder {
+    background: #2563eb;
+    color: white;
+}
+
+.marker-hospital {
+    background: #16a34a;
+    color: white;
+}
+
+/* ---------- LOCATION STATUS ---------- */
+
+.location-status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    padding: 10px 12px;
+
+    background: #f8fafc;
+
+    border-radius: 8px;
+
+    font-size: 13px;
+}
+
+.location-status-dot {
+    width: 9px;
+    height: 9px;
+
+    border-radius: 50%;
+}
+
+.location-status-dot.active {
+    background: #16a34a;
+}
+
+.location-status-dot.inactive {
+    background: #94a3b8;
+}
+
+/* ---------- ROUTE INFO ---------- */
+
+.route-info {
+    background: #eff6ff;
+
+    border: 1px solid #bfdbfe;
+
+    border-radius: 10px;
+
+    padding: 15px;
+
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+
+    gap: 10px;
+}
+
+.route-stat {
+    text-align: center;
+}
+
+.route-stat-value {
+    font-size: 18px;
+    font-weight: 900;
+
+    color: #1d4ed8;
+}
+
+.route-stat-label {
+    font-size: 11px;
+    color: #64748b;
+}
+
+/* ---------- RESPONSIVE ---------- */
+
+@media (max-width: 900px) {
+
+    .map-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .map-sidebar {
+        max-height: 350px;
+    }
+}
+
+@media (max-width: 600px) {
+
+    .map-container {
+        height: 450px;
+    }
+
+    .map-toolbar {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .map-toolbar-left,
+    .map-toolbar-right {
+        flex-wrap: wrap;
+    }
+
+    .route-info {
+        grid-template-columns: 1fr;
+    }
+}

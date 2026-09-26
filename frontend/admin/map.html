@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+
+<title>Live Map | Admin</title>
+
+<style>
+*{box-sizing:border-box;font-family:Arial,sans-serif}
+body{margin:0;background:#f1f5f9;color:#1e293b}
+header{
+background:#0f172a;color:white;padding:18px 6%;
+display:flex;justify-content:space-between;align-items:center
+}
+main{max-width:1200px;margin:auto;padding:30px 20px}
+.panel{
+background:white;padding:25px;border-radius:15px;
+margin-bottom:20px
+}
+.location{
+padding:18px;border:1px solid #e2e8f0;
+border-radius:10px;margin-top:12px
+}
+button{
+border:0;padding:10px 15px;border-radius:8px;
+cursor:pointer;font-weight:bold
+}
+.back{background:#475569;color:white}
+.open{background:#2563eb;color:white}
+.item{
+border:1px solid #e2e8f0;
+padding:15px;border-radius:10px;
+margin-top:10px
+}
+</style>
+</head>
+
+<body>
+
+<header>
+
+<strong>🗺️ Emergency Control Map</strong>
+
+<button
+class="back"
+onclick="location.href='dashboard.html'">
+Dashboard
+</button>
+
+</header>
+
+<main>
+
+<section class="panel">
+
+<h1>Live Emergency Locations</h1>
+
+<p>
+All emergency incidents with available GPS coordinates.
+</p>
+
+<div id="incidents">
+Loading incidents...
+</div>
+
+</section>
+
+
+<section class="panel">
+
+<h1>Responder Locations</h1>
+
+<div id="responders">
+Loading responders...
+</div>
+
+</section>
+
+</main>
+
+<script type="module">
+
+import {auth,db} from "../firebase-config.js";
+
+import {
+onAuthStateChanged
+} from "https://www.gstatic.com/firebasejs/12.0.0/firebase-auth.js";
+
+import {
+ref,get,onValue
+} from "https://www.gstatic.com/firebasejs/12.0.0/firebase-database.js";
+
+
+onAuthStateChanged(auth,async(user)=>{
+
+if(!user){
+location.href="../index.html";
+return;
+}
+
+const profile=
+await get(ref(db,"users/"+user.uid));
+
+if(
+!profile.exists() ||
+profile.val().role!=="admin"
+){
+
+alert("Admin access required.");
+location.href="../index.html";
+return;
+
+}
+
+loadIncidents();
+loadResponders();
+
+});
+
+
+function loadIncidents(){
+
+onValue(
+ref(db,"incidents"),
+snapshot=>{
+
+const box=
+document.getElementById("incidents");
+
+box.innerHTML="";
+
+
+let found=false;
+
+
+snapshot.forEach(child=>{
+
+const incident={
+id:child.key,
+...child.val()
+};
+
+
+if(
+typeof incident.latitude!=="number" ||
+typeof incident.longitude!=="number"
+){
+return;
+}
+
+
+found=true;
+
+
+const div=
+document.createElement("div");
+
+div.className="item";
+
+
+div.innerHTML=`
+
+<strong>
+🚨 ${escapeHTML(
+incident.type||"Emergency"
+)}
+</strong>
+
+<br>
+
+Status:
+${escapeHTML(
+incident.status||"Reported"
+)}
+
+<br>
+
+Latitude:
+${incident.latitude.toFixed(6)}
+
+<br>
+
+Longitude:
+${incident.longitude.toFixed(6)}
+
+<br><br>
+
+<button
+class="open"
+onclick="
+openMap(
+${incident.latitude},
+${incident.longitude}
+)
+">
+
+Open Location
+
+</button>
+
+<button
+class="open"
+onclick="
+location.href=
+'incident-details.html?id=${encodeURIComponent(incident.id)}'
+">
+
+Details
+
+</button>
+
+`;
+
+
+box.appendChild(div);
+
+});
+
+
+if(!found){
+
+box.innerHTML=
+"<p>No emergency locations available.</p>";
+
+}
+
+});
+
+}
+
+
+function loadResponders(){
+
+onValue(
+ref(db,"users"),
+snapshot=>{
+
+const box=
+document.getElementById("responders");
+
+box.innerHTML="";
+
+
+let found=false;
+
+
+snapshot.forEach(child=>{
+
+const user=child.val();
+
+
+if(
+user.role!=="responder" ||
+typeof user.latitude!=="number" ||
+typeof user.longitude!=="number"
+){
+return;
+}
+
+
+found=true;
+
+
+const div=
+document.createElement("div");
+
+div.className="item";
+
+
+div.innerHTML=`
+
+<strong>
+🚑 ${escapeHTML(
+user.name||user.email||"Responder"
+)}
+</strong>
+
+<br>
+
+Availability:
+${user.available===true
+?"Online"
+:"Offline"}
+
+<br>
+
+Latitude:
+${user.latitude.toFixed(6)}
+
+<br>
+
+Longitude:
+${user.longitude.toFixed(6)}
+
+<br><br>
+
+<button
+class="open"
+onclick="
+openMap(
+${user.latitude},
+${user.longitude}
+)
+">
+
+Open Location
+
+</button>
+
+`;
+
+
+box.appendChild(div);
+
+});
+
+
+if(!found){
+
+box.innerHTML=
+"<p>No responder locations available.</p>";
+
+}
+
+});
+
+}
+
+
+window.openMap=(lat,lng)=>{
+
+window.open(
+`https://www.google.com/maps?q=${lat},${lng}`,
+"_blank"
+);
+
+};
+
+
+function escapeHTML(value){
+
+return String(value)
+.replaceAll("&","&amp;")
+.replaceAll("<","&lt;")
+.replaceAll(">","&gt;")
+.replaceAll('"',"&quot;")
+.replaceAll("'","&#039;");
+
+}
+
+</script>
+
+</body>
+</html>

@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>My Profile | Smart Emergency Response</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+            font-family: Arial, sans-serif;
+        }
+
+        body {
+            margin: 0;
+            background: #f1f5f9;
+            color: #1e293b;
+        }
+
+        header {
+            background: #0f172a;
+            color: white;
+            padding: 18px 6%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        main {
+            max-width: 700px;
+            margin: 35px auto;
+            padding: 20px;
+        }
+
+        .box {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 5px 20px rgba(0,0,0,.07);
+        }
+
+        label {
+            display: block;
+            margin: 18px 0 7px;
+            font-weight: bold;
+        }
+
+        input {
+            width: 100%;
+            padding: 13px;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+        }
+
+        input:disabled {
+            background: #f1f5f9;
+        }
+
+        button {
+            border: none;
+            padding: 12px 17px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        .save {
+            background: #2563eb;
+            color: white;
+            width: 100%;
+            margin-top: 25px;
+        }
+
+        .back {
+            background: #475569;
+            color: white;
+        }
+
+        #message {
+            margin-top: 15px;
+            font-weight: bold;
+        }
+
+        .role {
+            display: inline-block;
+            background: #dbeafe;
+            color: #1d4ed8;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 13px;
+        }
+    </style>
+</head>
+
+<body>
+
+<header>
+
+    <strong>🚨 Smart Emergency Response</strong>
+
+    <button
+        class="back"
+        onclick="location.href='dashboard.html'">
+
+        Dashboard
+
+    </button>
+
+</header>
+
+
+<main>
+
+    <div class="box">
+
+        <h1>My Profile</h1>
+
+        <p>
+            Manage your citizen information.
+        </p>
+
+        <br>
+
+        <span class="role">
+            CITIZEN
+        </span>
+
+
+        <label>
+            Email
+        </label>
+
+        <input
+            id="email"
+            type="email"
+            disabled>
+
+
+        <label for="name">
+            Full Name
+        </label>
+
+        <input
+            id="name"
+            type="text"
+            maxlength="100"
+            placeholder="Enter your full name">
+
+
+        <label for="phone">
+            Phone Number
+        </label>
+
+        <input
+            id="phone"
+            type="tel"
+            maxlength="15"
+            placeholder="Enter phone number">
+
+
+        <label for="address">
+            Address
+        </label>
+
+        <input
+            id="address"
+            type="text"
+            maxlength="250"
+            placeholder="Enter your address">
+
+
+        <button
+            class="save"
+            id="saveBtn">
+
+            Save Profile
+
+        </button>
+
+
+        <div id="message"></div>
+
+    </div>
+
+</main>
+
+
+<script type="module">
+
+import { auth, db } from "../firebase-config.js";
+
+import {
+    onAuthStateChanged
+} from "https://www.gstatic.com/firebasejs/12.0.0/firebase-auth.js";
+
+import {
+    ref,
+    get,
+    update
+} from "https://www.gstatic.com/firebasejs/12.0.0/firebase-database.js";
+
+
+let currentUser = null;
+
+
+/* ================= AUTH ================= */
+
+onAuthStateChanged(auth, async (user) => {
+
+    if (!user) {
+
+        location.href = "../index.html";
+        return;
+
+    }
+
+    currentUser = user;
+
+    document.getElementById("email")
+        .value = user.email;
+
+
+    try {
+
+        const snapshot =
+            await get(
+                ref(db, "users/" + user.uid)
+            );
+
+
+        if (!snapshot.exists()) {
+
+            alert("Profile not found.");
+            location.href = "../index.html";
+            return;
+
+        }
+
+
+        const profile =
+            snapshot.val();
+
+
+        if (profile.role !== "citizen") {
+
+            alert("Citizen access required.");
+            location.href = "../index.html";
+            return;
+
+        }
+
+
+        document.getElementById("name")
+            .value =
+            profile.name || "";
+
+
+        document.getElementById("phone")
+            .value =
+            profile.phone || "";
+
+
+        document.getElementById("address")
+            .value =
+            profile.address || "";
+
+
+    } catch (error) {
+
+        console.error(error);
+
+    }
+
+});
+
+
+/* ================= SAVE ================= */
+
+document.getElementById("saveBtn")
+.addEventListener("click", async () => {
+
+    if (!currentUser) return;
+
+
+    const name =
+        document.getElementById("name")
+            .value.trim();
+
+
+    const phone =
+        document.getElementById("phone")
+            .value.trim();
+
+
+    const address =
+        document.getElementById("address")
+            .value.trim();
+
+
+    const message =
+        document.getElementById("message");
+
+
+    if (!name) {
+
+        message.style.color = "red";
+
+        message.textContent =
+            "Please enter your name.";
+
+        return;
+
+    }
+
+
+    const saveBtn =
+        document.getElementById("saveBtn");
+
+
+    saveBtn.disabled = true;
+
+    saveBtn.textContent =
+        "Saving...";
+
+
+    try {
+
+        await update(
+            ref(db, "users/" + currentUser.uid),
+            {
+
+                name: name,
+
+                phone: phone,
+
+                address: address,
+
+                profileUpdatedAt:
+                    new Date().toISOString()
+
+            }
+        );
+
+
+        message.style.color =
+            "green";
+
+
+        message.textContent =
+            "✅ Profile updated successfully.";
+
+
+    } catch (error) {
+
+        console.error(error);
+
+        message.style.color =
+            "red";
+
+
+        message.textContent =
+            "❌ Unable to update profile.";
+
+    }
+
+
+    saveBtn.disabled = false;
+
+    saveBtn.textContent =
+        "Save Profile";
+
+});
+
+</script>
+
+</body>
+</html>

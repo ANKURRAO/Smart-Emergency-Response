@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Responder Map | Smart Emergency Response</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+            font-family: Arial, sans-serif;
+        }
+
+        body {
+            margin: 0;
+            background: #f1f5f9;
+            color: #1e293b;
+        }
+
+        header {
+            background: #0f172a;
+            color: white;
+            padding: 18px 6%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        main {
+            max-width: 1100px;
+            margin: auto;
+            padding: 30px 20px;
+        }
+
+        .box {
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+        }
+
+        .location {
+            background: #eff6ff;
+            padding: 18px;
+            border-radius: 10px;
+            margin-top: 15px;
+        }
+
+        button {
+            border: none;
+            padding: 11px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        .primary {
+            background: #2563eb;
+            color: white;
+        }
+
+        .back {
+            background: #475569;
+            color: white;
+        }
+
+        #mapLink {
+            margin-top: 15px;
+        }
+
+        .message {
+            margin-top: 15px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+
+<body>
+
+<header>
+
+    <strong>
+        🗺️ Responder Location
+    </strong>
+
+    <button
+        class="back"
+        onclick="location.href='dashboard.html'">
+
+        Dashboard
+
+    </button>
+
+</header>
+
+
+<main>
+
+    <section class="box">
+
+        <h1>
+            My Current Location
+        </h1>
+
+        <p>
+            Update your current GPS location so the control room can
+            know your approximate position.
+        </p>
+
+        <button
+            class="primary"
+            id="updateLocation">
+
+            📍 Update My Location
+
+        </button>
+
+        <div
+            id="myLocation"
+            class="location">
+
+            Location not available.
+
+        </div>
+
+    </section>
+
+
+    <section class="box">
+
+        <h2>
+            Assigned Emergency Location
+        </h2>
+
+        <p>
+            Open the assigned emergency location in Google Maps.
+        </p>
+
+        <div
+            id="incidentLocation"
+            class="location">
+
+            No incident selected.
+
+        </div>
+
+        <button
+            id="mapLink"
+            class="primary"
+            disabled>
+
+            🗺️ Open Emergency Location
+
+        </button>
+
+        <div
+            id="message"
+            class="message">
+        </div>
+
+    </section>
+
+</main>
+
+
+<script type="module">
+
+import { auth, db } from "../firebase-config.js";
+
+import {
+    onAuthStateChanged
+} from "https://www.gstatic.com/firebasejs/12.0.0/firebase-auth.js";
+
+import {
+    ref,
+    get,
+    update,
+    onValue
+} from "https://www.gstatic.com/firebasejs/12.0.0/firebase-database.js";
+
+
+let currentUser = null;
+let incident = null;
+
+
+const params =
+    new URLSearchParams(location.search);
+
+const incidentId =
+    params.get("id");
+
+
+/* ================= AUTH ================= */
+
+onAuthStateChanged(auth, async (user) => {
+
+    if (!user) {
+
+        location.href = "../index.html";
+        return;
+
+    }
+
+    currentUser = user;
+
+
+    const profile =
+        await get(
+            ref(
+                db,
+                "users/" + user.uid
+            )
+        );
+
+
+    if (
+        !profile.exists() ||
+        profile.val().role !== "responder"
+    ) {
+
+        alert("Responder access required.");
+
+        location.href =
+            "../index.html";
+
+        return;
+
+    }
+
+
+    loadResponderLocation();
+
+
+    if (incidentId) {
+
+        loadIncidentLocation();
+
+    }
+
+});
+
+
+/* ================= RESPONDER LOCATION ================= */
+
+async function loadResponderLocation() {
+
+    const snapshot =
+        await get(
+            ref(
+                db,
+                "users/" +
+                currentUser.uid
+            )
+        );
+
+
+    if (!snapshot.exists()) return;
+
+
+    const data =
+        snapshot.val();
+
+
+    if (
+        typeof data.latitude === "number" &&
+        typeof data.longitude === "number"
+    ) {
+
+        showMyLocation(
+            data.latitude,
+            data.longitude
+        );
+
+    }
+
+}
+
+
+function showMyLocation(lat, lng) {
+
+    document.getElementById("myLocation")
+        .innerHTML = `
+
+            <strong>Current GPS Position</strong>
+
+            <br>
+
+            Latitude:
+            ${lat.toFixed(6)}
+
+            <br>
+
+            Longitude:
+            ${lng.toFixed(6)}
+
+        `;
+
+}
+
+
+/* ================= UPDATE LOCATION ================= */
+
+document.getElementById("updateLocation")
+.addEventListener("click", () => {
+
+    if (!navigator.geolocation) {
+
+        alert(
+            "Geolocation is not supported."
+        );
+
+        return;
+
+    }
+
+
+    const message =
+        document.getElementById("message");
+
+
+    navigator.geolocation.getCurrentPosition(
+
+        async (position) => {
+
+            const lat =
+                position.coords.latitude;
+
+            const lng =
+                position.coords.longitude;
+
+
+            try {
+
+                await update(
+                    ref(
+                        db,
+                        "users/" +
+                        currentUser.uid
+                    ),
+                    {
+
+                        latitude: lat,
+
+                        longitude: lng,
+
+                        locationUpdatedAt:
+                            new Date().toISOString()
+
+                    }
+                );
+
+
+                showMyLocation(
+                    lat,
+                    lng
+                );
+
+
+                message.style.color =
+                    "green";
+
+
+                message.textContent =
+                    "✅ Location updated.";
+
+            } catch (error) {
+
+                console.error(error);
+
+                message.style.color =
+                    "red";
+
+                message.textContent =
+                    "Unable to update location.";
+
+            }
+
+        },
+
+        () => {
+
+            alert(
+                "Please allow location permission."
+            );
+
+        },
+
+        {
+            enableHighAccuracy: true,
+            timeout: 10000,
+            maximumAge: 0
+        }
+
+    );
+
+});
+
+
+/* ================= INCIDENT LOCATION ================= */
+
+function loadIncidentLocation() {
+
+    onValue(
+        ref(
+            db,
+            "incidents/" +
+            incidentId
+        ),
+        (snapshot) => {
+
+            if (!snapshot.exists()) {
+
+                document.getElementById(
+                    "incidentLocation"
+                ).textContent =
+                    "Incident not found.";
+
+                return;
+
+            }
+
+
+            incident =
+                snapshot.val();
+
+
+            if (
+                incident.responderId !==
+                currentUser.uid
+            ) {
+
+                document.getElementById(
+                    "incidentLocation"
+                ).textContent =
+                    "This incident is not assigned to you.";
+
+                return;
+
+            }
+
+
+            const lat =
+                incident.latitude;
+
+            const lng =
+                incident.longitude;
+
+
+            if (
+                typeof lat !== "number" ||
+                typeof lng !== "number"
+            ) {
+
+                document.getElementById(
+                    "incidentLocation"
+                ).textContent =
+                    "Emergency GPS location unavailable.";
+
+                return;
+
+            }
+
+
+            document.getElementById(
+                "incidentLocation"
+            ).innerHTML = `
+
+                <strong>
+                    Emergency Location
+                </strong>
+
+                <br>
+
+                Latitude:
+                ${lat.toFixed(6)}
+
+                <br>
+
+                Longitude:
+                ${lng.toFixed(6)}
+
+            `;
+
+
+            const mapButton =
+                document.getElementById(
+                    "mapLink"
+                );
+
+
+            mapButton.disabled = false;
+
+
+            mapButton.onclick = () => {
+
+                window.open(
+                    `https://www.google.com/maps?q=${lat},${lng}`,
+                    "_blank"
+                );
+
+            };
+
+        }
+    );
+
+}
+
+</script>
+
+</body>
+</html>

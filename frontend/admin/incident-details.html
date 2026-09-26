@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Incident Details | Admin</title>
+
+<style>
+*{box-sizing:border-box;font-family:Arial,sans-serif}
+body{margin:0;background:#f1f5f9;color:#1e293b}
+header{
+background:#0f172a;color:white;padding:18px 6%;
+display:flex;justify-content:space-between;align-items:center
+}
+main{max-width:1100px;margin:auto;padding:30px 20px}
+.box{
+background:white;padding:25px;border-radius:15px;
+margin-bottom:20px;box-shadow:0 4px 15px rgba(0,0,0,.05)
+}
+.details{line-height:1.9;color:#475569}
+.grid{
+display:grid;grid-template-columns:1fr 1fr;
+gap:20px
+}
+select,button{
+padding:12px;border-radius:8px;
+border:1px solid #cbd5e1
+}
+.assign{
+background:#2563eb;color:white;border:0;
+cursor:pointer;font-weight:bold
+}
+.back{
+background:#475569;color:white;border:0;
+cursor:pointer;font-weight:bold
+}
+.danger{
+background:#dc2626;color:white;border:0;
+cursor:pointer
+}
+.status{
+padding:6px 12px;border-radius:20px;
+background:#dbeafe;color:#1d4ed8;
+font-weight:bold
+}
+#message{margin-top:15px;font-weight:bold}
+@media(max-width:700px){
+.grid{grid-template-columns:1fr}
+}
+</style>
+</head>
+
+<body>
+
+<header>
+
+<strong>🛡️ Incident Control</strong>
+
+<button class="back"
+onclick="location.href='incidents.html'">
+Back
+</button>
+
+</header>
+
+<main>
+
+<section class="box">
+
+<h1 id="title">
+Loading Incident...
+</h1>
+
+<p>
+Incident ID:
+<strong id="incidentId"></strong>
+</p>
+
+<span id="status" class="status">
+Loading...
+</span>
+
+</section>
+
+
+<section class="box">
+
+<h2>Emergency Information</h2>
+
+<div id="details" class="details">
+Loading...
+</div>
+
+</section>
+
+
+<section class="grid">
+
+<section class="box">
+
+<h2>Responder Assignment</h2>
+
+<p>
+Select an available responder for this emergency.
+</p>
+
+<select id="responderSelect">
+<option value="">
+Loading responders...
+</option>
+</select>
+
+<br><br>
+
+<button
+class="assign"
+id="assignBtn">
+Assign Responder
+</button>
+
+<div id="message"></div>
+
+</section>
+
+
+<section class="box">
+
+<h2>Current Responder</h2>
+
+<div id="currentResponder">
+No responder assigned.
+</div>
+
+</section>
+
+</section>
+
+
+<section class="box">
+
+<h2>Emergency Location</h2>
+
+<div id="location">
+Loading...
+</div>
+
+<br>
+
+<button
+class="assign"
+id="mapBtn">
+Open Location
+</button>
+
+</section>
+
+</main>
+
+
+<script type="module">
+
+import {auth,db} from "../firebase-config.js";
+
+import {
+onAuthStateChanged
+} from "https://www.gstatic.com/firebasejs/12.0.0/firebase-auth.js";
+
+import {
+ref,get,onValue,update
+} from "https://www.gstatic.com/firebasejs/12.0.0/firebase-database.js";
+
+let currentUser=null;
+let incident=null;
+let responders=[];
+
+const params=
+new URLSearchParams(location.search);
+
+const incidentId=
+params.get("id");
+
+if(!incidentId){
+alert("Incident ID missing.");
+location.href="incidents.html";
+}
+
+onAuthStateChanged(auth,async(user)=>{
+
+if(!user){
+location.href="../index.html";
+return;
+}
+
+currentUser=user;
+
+const profile=
+await get(ref(db,"users/"+user.uid));
+
+if(
+!profile.exists() ||
+profile.val().role!=="admin"
+){
+
+alert("Admin access required.");
+location.href="../index.html";
+return;
+
+}
+
+loadIncident();
+loadResponders();
+
+});
+
+
+/* INCIDENT */
+
+function loadIncident(){
+
+onValue(
+ref(db,"incidents/"+incidentId),
+snapshot=>{
+
+if(!snapshot.exists()){
+
+alert("Incident not found.");
+location.href="incidents.html";
+return;
+
+}
+
+incident=snapshot.val();
+
+renderIncident();
+
+});
+
+}
+
+
+function renderIncident(){
+
+document.getElementById("title")
+.textContent=
+incident.type||"Emergency";
+
+document.getElementById("incidentId")
+.textContent=incidentId;
+
+document.getElementById("status")
+.textContent=
+incident.status||"Reported";
+
+document.getElementById("details")
+.innerHTML=`
+
+<strong>Category:</strong>
+${escapeHTML(incident.category||"Emergency")}
+
+<br>
+
+<strong>Severity:</strong>
+${escapeHTML(incident.severity||"Unknown")}
+
+<br>
+
+<strong>Priority:</strong>
+${escapeHTML(incident.priority||"Normal")}
+
+<br>
+
+<strong>Description:</strong>
+${escapeHTML(incident.description||"N/A")}
+
+<br>
+
+<strong>Citizen:</strong>
+${escapeHTML(incident.userEmail||"Unknown")}
+
+<br>
+
+<strong>Landmark:</strong>
+${escapeHTML(incident.landmark||"Not provided")}
+
+<br>
+
+<strong>Reported:</strong>
+${formatDate(incident.createdAt)}
+
+<br>
+
+<strong>Updated:</strong>
+${formatDate(incident.updatedAt)}
+
+`;
+
+
+if(incident.responderId){
+
+document.getElementById("currentResponder")
+.innerHTML=`
+
+<strong>
+${escapeHTML(
+incident.responderName||"Responder"
+)}
+</strong>
+
+<br><br>
+
+Responder ID:
+${escapeHTML(incident.responderId)}
+
+<br><br>
+
+Status:
+${escapeHTML(incident.status||"Assigned")}
+
+`;
+
+}else{
+
+document.getElementById("currentResponder")
+.textContent=
+"No responder assigned.";
+
+}
+
+
+const lat=incident.latitude;
+const lng=incident.longitude;
+
+if(
+typeof lat==="number" &&
+typeof lng==="number"
+){
+
+document.getElementById("location")
+.innerHTML=`
+
+Latitude:
+${lat.toFixed(6)}
+
+<br>
+
+Longitude:
+${lng.toFixed(6)}
+
+`;
+
+document.getElementById("mapBtn")
+.onclick=()=>{
+
+window.open(
+`https://www.google.com/maps?q=${lat},${lng}`,
+"_blank"
+);
+
+};
+
+}
+
+}
+
+
+/* RESPONDERS */
+
+function loadResponders(){
+
+onValue(
+ref(db,"users"),
+snapshot=>{
+
+responders=[];
+
+snapshot.forEach(child=>{
+
+const data=child.val();
+
+if(data.role==="responder"){
+
+responders.push({
+id:child.key,
+...data
+});
+
+}
+
+});
+
+renderResponderOptions();
+
+});
+
+}
+
+
+function renderResponderOptions(){
+
+const select=
+document.getElementById("responderSelect");
+
+select.innerHTML=`
+<option value="">
+Select responder
+</option>
+`;
+
+responders.forEach(r=>{
+
+const option=
+document.createElement("option");
+
+option.value=r.id;
+
+option.textContent=
+`${r.name||r.email||"Responder"} — ${
+r.available===true
+?"Available"
+:"Offline"
+}`;
+
+select.appendChild(option);
+
+});
+
+}
+
+
+/* ASSIGN */
+
+document.getElementById("assignBtn")
+.addEventListener("click",async()=>{
+
+const responderId=
+document.getElementById(
+"responderSelect"
+).value;
+
+const message=
+document.getElementById("message");
+
+if(!responderId){
+
+message.style.color="red";
+message.textContent=
+"Please select a responder.";
+
+return;
+
+}
+
+const responder=
+responders.find(
+r=>r.id===responderId
+);
+
+if(!responder){
+
+message.textContent=
+"Responder not found.";
+
+return;
+
+}
+
+try{
+
+await update(
+ref(db,"incidents/"+incidentId),
+{
+
+responderId:
+responderId,
+
+responderName:
+responder.name||
+responder.email||
+"Responder",
+
+status:
+"Assigned",
+
+assignedAt:
+new Date().toISOString(),
+
+updatedAt:
+new Date().toISOString()
+
+}
+);
+
+
+message.style.color="green";
+
+message.textContent=
+"✅ Responder assigned successfully.";
+
+}catch(error){
+
+console.error(error);
+
+message.style.color="red";
+
+message.textContent=
+"Unable to assign responder.";
+
+}
+
+});
+
+
+function formatDate(value){
+
+if(!value)return"Unknown";
+
+const d=new Date(value);
+
+return isNaN(d)?"Unknown":
+d.toLocaleString();
+
+}
+
+function escapeHTML(value){
+
+return String(value)
+.replaceAll("&","&amp;")
+.replaceAll("<","&lt;")
+.replaceAll(">","&gt;")
+.replaceAll('"',"&quot;")
+.replaceAll("'","&#039;");
+
+}
+
+</script>
+
+</body>
+</html>

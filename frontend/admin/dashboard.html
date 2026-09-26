@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Admin Dashboard | Smart Emergency Response</title>
+
+<style>
+*{box-sizing:border-box;font-family:Arial,sans-serif}
+body{margin:0;background:#f1f5f9;color:#1e293b}
+header{
+    background:#0f172a;color:white;padding:18px 6%;
+    display:flex;justify-content:space-between;align-items:center
+}
+.logo{font-weight:bold;font-size:20px}
+button{
+    border:0;border-radius:8px;padding:11px 16px;
+    cursor:pointer;font-weight:bold
+}
+.logout{background:#ef4444;color:white}
+main{max-width:1250px;margin:auto;padding:30px 20px}
+.welcome{margin-bottom:25px}
+.welcome p{color:#64748b}
+.cards{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(200px,1fr));
+    gap:18px;margin-bottom:25px
+}
+.card{
+    background:white;padding:22px;border-radius:14px;
+    box-shadow:0 4px 15px rgba(0,0,0,.06)
+}
+.card h2{font-size:30px;margin:0 0 8px}
+.card p{color:#64748b}
+.card button{background:#2563eb;color:white}
+.grid{
+    display:grid;
+    grid-template-columns:2fr 1fr;
+    gap:20px
+}
+.panel{
+    background:white;padding:24px;border-radius:14px
+}
+.incident{
+    border:1px solid #e2e8f0;
+    padding:15px;border-radius:10px;margin-top:12px
+}
+.row{
+    display:flex;justify-content:space-between;
+    gap:10px;flex-wrap:wrap
+}
+.badge{
+    padding:5px 10px;border-radius:20px;
+    font-size:12px;font-weight:bold;
+    background:#dbeafe;color:#1d4ed8
+}
+.critical{background:#fee2e2;color:#b91c1c}
+.quick{
+    display:grid;gap:10px
+}
+.quick button{
+    background:#e2e8f0;
+    text-align:left
+}
+@media(max-width:800px){
+    .grid{grid-template-columns:1fr}
+}
+</style>
+</head>
+
+<body>
+
+<header>
+    <div class="logo">🛡️ Smart Emergency Response — Admin</div>
+
+    <div>
+        <span id="adminEmail">Loading...</span>
+        <button class="logout" id="logoutBtn">Logout</button>
+    </div>
+</header>
+
+<main>
+
+<section class="welcome">
+    <h1>Control Room Dashboard</h1>
+    <p>Monitor emergencies, responders and citizens from one place.</p>
+</section>
+
+<section class="cards">
+
+    <div class="card">
+        <h2 id="totalIncidents">0</h2>
+        <p>Total Incidents</p>
+        <button onclick="location.href='incidents.html'">
+            View Incidents
+        </button>
+    </div>
+
+    <div class="card">
+        <h2 id="activeIncidents">0</h2>
+        <p>Active Emergencies</p>
+        <button onclick="location.href='incidents.html?filter=active'">
+            Active
+        </button>
+    </div>
+
+    <div class="card">
+        <h2 id="responders">0</h2>
+        <p>Responders</p>
+        <button onclick="location.href='responders.html'">
+            Manage
+        </button>
+    </div>
+
+    <div class="card">
+        <h2 id="users">0</h2>
+        <p>Citizens</p>
+        <button onclick="location.href='users.html'">
+            Users
+        </button>
+    </div>
+
+</section>
+
+<section class="grid">
+
+    <div class="panel">
+
+        <h2>🚨 Live Emergency Feed</h2>
+
+        <div id="liveIncidents">
+            Loading...
+        </div>
+
+    </div>
+
+    <div class="panel">
+
+        <h2>⚡ Quick Actions</h2>
+
+        <div class="quick">
+
+            <button onclick="location.href='incidents.html'">
+                🚨 Manage Incidents
+            </button>
+
+            <button onclick="location.href='responders.html'">
+                🚑 Manage Responders
+            </button>
+
+            <button onclick="location.href='users.html'">
+                👥 Manage Users
+            </button>
+
+            <button onclick="location.href='map.html'">
+                🗺️ Open Live Map
+            </button>
+
+            <button onclick="location.href='analytics.html'">
+                📊 View Analytics
+            </button>
+
+        </div>
+
+    </div>
+
+</section>
+
+</main>
+
+<script type="module">
+
+import {auth,db} from "../firebase-config.js";
+
+import {
+    onAuthStateChanged,
+    signOut
+} from "https://www.gstatic.com/firebasejs/12.0.0/firebase-auth.js";
+
+import {
+    ref,
+    onValue,
+    get
+} from "https://www.gstatic.com/firebasejs/12.0.0/firebase-database.js";
+
+let currentUser=null;
+
+onAuthStateChanged(auth,async(user)=>{
+
+    if(!user){
+        location.href="../index.html";
+        return;
+    }
+
+    currentUser=user;
+
+    const snap=await get(ref(db,"users/"+user.uid));
+
+    if(!snap.exists() || snap.val().role!=="admin"){
+        alert("Admin access required.");
+        location.href="../index.html";
+        return;
+    }
+
+    document.getElementById("adminEmail").textContent=user.email;
+
+    loadDashboard();
+});
+
+document.getElementById("logoutBtn").onclick=async()=>{
+    await signOut(auth);
+    location.href="../index.html";
+};
+
+function loadDashboard(){
+
+    onValue(ref(db,"incidents"),snapshot=>{
+
+        let incidents=[];
+
+        snapshot.forEach(child=>{
+            incidents.push({
+                id:child.key,
+                ...child.val()
+            });
+        });
+
+        document.getElementById("totalIncidents").textContent=
+            incidents.length;
+
+        document.getElementById("activeIncidents").textContent=
+            incidents.filter(i=>i.status!=="Resolved").length;
+
+        renderIncidents(incidents);
+    });
+
+    onValue(ref(db,"users"),snapshot=>{
+
+        let responders=0;
+        let citizens=0;
+
+        snapshot.forEach(child=>{
+
+            const data=child.val();
+
+            if(data.role==="responder") responders++;
+            if(data.role==="citizen") citizens++;
+
+        });
+
+        document.getElementById("responders").textContent=responders;
+        document.getElementById("users").textContent=citizens;
+    });
+}
+
+function renderIncidents(incidents){
+
+    const box=document.getElementById("liveIncidents");
+
+    incidents.sort(
+        (a,b)=>
+        new Date(b.createdAt||0)-
+        new Date(a.createdAt||0)
+    );
+
+    const active=incidents
+        .filter(i=>i.status!=="Resolved")
+        .slice(0,8);
+
+    if(active.length===0){
+        box.innerHTML="<p>No active emergencies.</p>";
+        return;
+    }
+
+    box.innerHTML="";
+
+    active.forEach(i=>{
+
+        const div=document.createElement("div");
+
+        div.className="incident";
+
+        const critical=
+            i.severity==="Critical"?"critical":"";
+
+        div.innerHTML=`
+
+            <div class="row">
+
+                <strong>
+                    ${escapeHTML(i.type||"Emergency")}
+                </strong>
+
+                <span class="badge ${critical}">
+                    ${escapeHTML(i.severity||"Unknown")}
+                </span>
+
+            </div>
+
+            <p>
+                ${escapeHTML(i.description||"No description")}
+            </p>
+
+            <strong>Status:</strong>
+            ${escapeHTML(i.status||"Reported")}
+
+            <br><br>
+
+            <button
+                style="background:#2563eb;color:white"
+                onclick="
+                location.href=
+                'incident-details.html?id=${encodeURIComponent(i.id)}'
+                ">
+
+                Open
+
+            </button>
+        `;
+
+        box.appendChild(div);
+    });
+}
+
+function escapeHTML(value){
+    return String(value)
+    .replaceAll("&","&amp;")
+    .replaceAll("<","&lt;")
+    .replaceAll(">","&gt;")
+    .replaceAll('"',"&quot;")
+    .replaceAll("'","&#039;");
+}
+
+</script>
+
+</body>
+</html>

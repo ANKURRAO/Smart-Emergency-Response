@@ -1,0 +1,338 @@
+/* =========================================================
+   CITIZEN MODULE CSS
+   ========================================================= */
+
+.citizen-dashboard {
+    background: #f4f7fb;
+}
+
+/* ---------- CITIZEN HEADER ---------- */
+
+.citizen-header {
+    background: white;
+    border-bottom: 1px solid #e2e8f0;
+
+    padding: 22px 0;
+}
+
+.citizen-header-content {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    gap: 20px;
+}
+
+.citizen-welcome h1 {
+    font-size: 26px;
+    margin-bottom: 4px;
+}
+
+.citizen-welcome p {
+    color: #64748b;
+}
+
+/* ---------- SOS ---------- */
+
+.sos-card {
+    background: white;
+
+    border: 1px solid #fee2e2;
+    border-radius: 18px;
+
+    padding: 25px;
+
+    text-align: center;
+
+    box-shadow: 0 8px 25px rgba(220, 38, 38, 0.08);
+}
+
+.sos-button {
+    width: 145px;
+    height: 145px;
+
+    margin: 20px auto;
+
+    border: none;
+    border-radius: 50%;
+
+    background: #dc2626;
+    color: white;
+
+    font-size: 22px;
+    font-weight: 900;
+
+    box-shadow:
+        0 0 0 10px rgba(220, 38, 38, 0.08),
+        0 10px 30px rgba(220, 38, 38, 0.3);
+
+    transition: 0.25s ease;
+}
+
+.sos-button:hover {
+    transform: scale(1.05);
+}
+
+.sos-button:active {
+    transform: scale(0.97);
+}
+
+.sos-help {
+    color: #64748b;
+    font-size: 13px;
+}
+
+/* ---------- EMERGENCY REPORT ---------- */
+
+.report-card {
+    background: white;
+    border-radius: 16px;
+    border: 1px solid #e2e8f0;
+    padding: 25px;
+}
+
+.report-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 18px;
+}
+
+.report-grid .full-width {
+    grid-column: 1 / -1;
+}
+
+/* ---------- INCIDENT CARD ---------- */
+
+.incident-card {
+    background: white;
+
+    border: 1px solid #e2e8f0;
+    border-radius: 14px;
+
+    padding: 18px;
+
+    transition: 0.2s ease;
+}
+
+.incident-card:hover {
+    box-shadow: 0 8px 25px rgba(15, 23, 42, 0.08);
+    transform: translateY(-2px);
+}
+
+.incident-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    gap: 15px;
+
+    margin-bottom: 12px;
+}
+
+.incident-id {
+    color: #64748b;
+    font-size: 12px;
+}
+
+.incident-type {
+    font-size: 17px;
+    font-weight: 800;
+}
+
+.incident-description {
+    color: #475569;
+    margin: 10px 0;
+}
+
+.incident-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+
+    color: #64748b;
+    font-size: 13px;
+}
+
+/* ---------- STATUS TRACKER ---------- */
+
+.status-tracker {
+    display: flex;
+    align-items: flex-start;
+
+    margin: 30px 0;
+
+    overflow-x: auto;
+}
+
+.status-step {
+    flex: 1;
+    min-width: 120px;
+
+    text-align: center;
+
+    position: relative;
+}
+
+.status-step:not(:last-child)::after {
+    content: "";
+
+    position: absolute;
+
+    top: 17px;
+    left: 50%;
+    width: 100%;
+    height: 3px;
+
+    background: #e2e8f0;
+
+    z-index: 0;
+}
+
+.status-step.completed:not(:last-child)::after {
+    background: #16a34a;
+}
+
+.status-circle {
+    width: 35px;
+    height: 35px;
+
+    margin: auto;
+
+    border-radius: 50%;
+
+    display: grid;
+    place-items: center;
+
+    background: #e2e8f0;
+    color: #64748b;
+
+    position: relative;
+    z-index: 1;
+
+    font-size: 13px;
+    font-weight: 800;
+}
+
+.status-step.active .status-circle,
+.status-step.completed .status-circle {
+    background: #16a34a;
+    color: white;
+}
+
+.status-label {
+    margin-top: 8px;
+
+    font-size: 12px;
+    font-weight: 700;
+
+    color: #64748b;
+}
+
+/* ---------- PROFILE ---------- */
+
+.profile-card {
+    max-width: 700px;
+}
+
+.profile-avatar {
+    width: 90px;
+    height: 90px;
+
+    border-radius: 50%;
+
+    background: #dbeafe;
+    color: #2563eb;
+
+    display: grid;
+    place-items: center;
+
+    font-size: 32px;
+    font-weight: 900;
+
+    margin-bottom: 18px;
+}
+
+.profile-row {
+    display: flex;
+    justify-content: space-between;
+
+    gap: 20px;
+
+    padding: 14px 0;
+
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.profile-row:last-child {
+    border-bottom: none;
+}
+
+.profile-label {
+    color: #64748b;
+    font-size: 14px;
+}
+
+.profile-value {
+    font-weight: 700;
+    text-align: right;
+}
+
+/* ---------- LOCATION ---------- */
+
+.location-box {
+    background: #eff6ff;
+
+    border: 1px solid #bfdbfe;
+    border-radius: 12px;
+
+    padding: 15px;
+
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.location-icon {
+    width: 40px;
+    height: 40px;
+
+    display: grid;
+    place-items: center;
+
+    background: #2563eb;
+    color: white;
+
+    border-radius: 10px;
+}
+
+/* ---------- RESPONSIVE ---------- */
+
+@media (max-width: 700px) {
+
+    .citizen-header-content {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .report-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .report-grid .full-width {
+        grid-column: auto;
+    }
+
+    .sos-button {
+        width: 125px;
+        height: 125px;
+    }
+
+    .profile-row {
+        flex-direction: column;
+        gap: 5px;
+    }
+
+    .profile-value {
+        text-align: left;
+    }
+}

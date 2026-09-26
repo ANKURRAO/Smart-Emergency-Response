@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+
+<title>Responders | Admin</title>
+
+<style>
+*{box-sizing:border-box;font-family:Arial,sans-serif}
+body{margin:0;background:#f1f5f9;color:#1e293b}
+header{
+background:#0f172a;color:white;padding:18px 6%;
+display:flex;justify-content:space-between;align-items:center
+}
+main{max-width:1100px;margin:auto;padding:30px 20px}
+.toolbar{
+background:white;padding:18px;border-radius:12px;
+margin:20px 0
+}
+select,input{
+padding:11px;border:1px solid #cbd5e1;
+border-radius:8px
+}
+.grid{
+display:grid;
+grid-template-columns:repeat(auto-fit,minmax(260px,1fr));
+gap:16px
+}
+.card{
+background:white;padding:22px;border-radius:14px;
+box-shadow:0 4px 15px rgba(0,0,0,.05)
+}
+.online{color:#15803d;font-weight:bold}
+.offline{color:#dc2626;font-weight:bold}
+.badge{
+display:inline-block;padding:5px 10px;
+border-radius:20px;font-size:12px;
+background:#dcfce7;color:#15803d
+}
+button{
+border:0;padding:10px 15px;
+border-radius:8px;cursor:pointer;font-weight:bold
+}
+.back{background:#475569;color:white}
+.map{background:#2563eb;color:white}
+</style>
+</head>
+
+<body>
+
+<header>
+
+<strong>🚑 Responder Management</strong>
+
+<button
+class="back"
+onclick="location.href='dashboard.html'">
+Dashboard
+</button>
+
+</header>
+
+<main>
+
+<h1>Emergency Responders</h1>
+
+<p>
+Monitor responder availability and current assignments.
+</p>
+
+<div class="toolbar">
+
+<select id="availabilityFilter">
+
+<option value="all">
+All Responders
+</option>
+
+<option value="online">
+Available
+</option>
+
+<option value="offline">
+Offline
+</option>
+
+</select>
+
+</div>
+
+<section id="list" class="grid">
+Loading responders...
+</section>
+
+</main>
+
+<script type="module">
+
+import {auth,db} from "../firebase-config.js";
+
+import {
+onAuthStateChanged
+} from "https://www.gstatic.com/firebasejs/12.0.0/firebase-auth.js";
+
+import {
+ref,get,onValue
+} from "https://www.gstatic.com/firebasejs/12.0.0/firebase-database.js";
+
+let responders=[];
+
+onAuthStateChanged(auth,async(user)=>{
+
+if(!user){
+location.href="../index.html";
+return;
+}
+
+const profile=
+await get(ref(db,"users/"+user.uid));
+
+if(
+!profile.exists() ||
+profile.val().role!=="admin"
+){
+
+alert("Admin access required.");
+location.href="../index.html";
+return;
+
+}
+
+loadResponders();
+
+});
+
+
+function loadResponders(){
+
+onValue(
+ref(db,"users"),
+snapshot=>{
+
+responders=[];
+
+snapshot.forEach(child=>{
+
+const data=child.val();
+
+if(data.role==="responder"){
+
+responders.push({
+id:child.key,
+...data
+});
+
+}
+
+});
+
+render();
+
+});
+
+}
+
+
+document
+.getElementById("availabilityFilter")
+.addEventListener("change",render);
+
+
+function render(){
+
+const filter=
+document.getElementById(
+"availabilityFilter"
+).value;
+
+let list=responders;
+
+if(filter==="online"){
+
+list=responders.filter(
+r=>r.available===true
+);
+
+}
+
+if(filter==="offline"){
+
+list=responders.filter(
+r=>r.available!==true
+);
+
+}
+
+
+const container=
+document.getElementById("list");
+
+container.innerHTML="";
+
+
+if(list.length===0){
+
+container.innerHTML=
+"<p>No responders found.</p>";
+
+return;
+
+}
+
+
+list.forEach(r=>{
+
+const card=
+document.createElement("div");
+
+card.className="card";
+
+const available=
+r.available===true;
+
+
+card.innerHTML=`
+
+<h2>
+${escapeHTML(
+r.name||"Unnamed Responder"
+)}
+</h2>
+
+<p>
+${escapeHTML(
+r.email||"No email"
+)}
+</p>
+
+<p>
+<strong>Phone:</strong>
+${escapeHTML(
+r.phone||"Not available"
+)}
+</p>
+
+<p>
+<strong>Department:</strong>
+${escapeHTML(
+r.department||"Not specified"
+)}
+</p>
+
+<p>
+<strong>Vehicle:</strong>
+${escapeHTML(
+r.vehicle||"Not specified"
+)}
+</p>
+
+<p class="${
+available?"online":"offline"
+}">
+
+● ${
+available
+?"Available"
+:"Offline"
+}
+
+</p>
+
+<button
+class="map"
+onclick="
+openLocation(
+'${r.id}',
+${typeof r.latitude==="number"
+?r.latitude:"null"},
+${typeof r.longitude==="number"
+?r.longitude:"null"}
+)
+">
+
+View Location
+
+</button>
+
+`;
+
+container.appendChild(card);
+
+});
+
+}
+
+
+window.openLocation=
+(id,lat,lng)=>{
+
+if(
+typeof lat!=="number" ||
+typeof lng!=="number"
+){
+
+alert("Responder location unavailable.");
+return;
+
+}
+
+window.open(
+`https://www.google.com/maps?q=${lat},${lng}`,
+"_blank"
+);
+
+};
+
+
+function escapeHTML(value){
+
+return String(value)
+.replaceAll("&","&amp;")
+.replaceAll("<","&lt;")
+.replaceAll(">","&gt;")
+.replaceAll('"',"&quot;")
+.replaceAll("'","&#039;");
+
+}
+
+</script>
+
+</body>
+</html>

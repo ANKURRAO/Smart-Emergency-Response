@@ -1,0 +1,817 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Responder Dashboard | Smart Emergency Response</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+            font-family: Arial, sans-serif;
+        }
+
+        body {
+            margin: 0;
+            background: #f1f5f9;
+            color: #1e293b;
+        }
+
+        header {
+            background: #0f172a;
+            color: white;
+            padding: 18px 6%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .logo {
+            font-size: 20px;
+            font-weight: bold;
+        }
+
+        .user-area {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        button {
+            border: none;
+            border-radius: 8px;
+            padding: 11px 16px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        .logout {
+            background: #ef4444;
+            color: white;
+        }
+
+        main {
+            max-width: 1200px;
+            margin: auto;
+            padding: 30px 20px;
+        }
+
+        .welcome {
+            margin-bottom: 25px;
+        }
+
+        .welcome p {
+            color: #64748b;
+        }
+
+        .availability {
+            background: white;
+            padding: 20px;
+            border-radius: 14px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 15px rgba(0,0,0,.06);
+        }
+
+        .availability-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .online {
+            color: #15803d;
+            font-weight: bold;
+        }
+
+        .offline {
+            color: #dc2626;
+            font-weight: bold;
+        }
+
+        .toggle {
+            background: #16a34a;
+            color: white;
+        }
+
+        .toggle.off {
+            background: #64748b;
+        }
+
+        .cards {
+            display: grid;
+            grid-template-columns:
+                repeat(auto-fit, minmax(210px, 1fr));
+            gap: 18px;
+            margin-bottom: 25px;
+        }
+
+        .card {
+            background: white;
+            padding: 22px;
+            border-radius: 14px;
+            box-shadow: 0 4px 15px rgba(0,0,0,.06);
+        }
+
+        .card h2 {
+            margin: 0 0 8px;
+        }
+
+        .card p {
+            color: #64748b;
+        }
+
+        .card button {
+            background: #2563eb;
+            color: white;
+        }
+
+        .assignments {
+            background: white;
+            padding: 25px;
+            border-radius: 14px;
+        }
+
+        .assignment {
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 18px;
+            margin-top: 14px;
+        }
+
+        .assignment-header {
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+            background: #dbeafe;
+            color: #1d4ed8;
+        }
+
+        .critical {
+            background: #fee2e2;
+            color: #b91c1c;
+        }
+
+        .view {
+            margin-top: 12px;
+            background: #2563eb;
+            color: white;
+        }
+
+        .empty {
+            color: #64748b;
+            padding: 20px 0;
+        }
+
+        @media(max-width:600px) {
+            header {
+                padding: 15px;
+            }
+
+            .user-area span {
+                display: none;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+<header>
+
+    <div class="logo">
+        🚑 Smart Emergency Response
+    </div>
+
+    <div class="user-area">
+
+        <span id="userEmail">
+            Loading...
+        </span>
+
+        <button
+            class="logout"
+            id="logoutBtn">
+
+            Logout
+
+        </button>
+
+    </div>
+
+</header>
+
+
+<main>
+
+    <section class="welcome">
+
+        <h1>
+            Responder Dashboard
+        </h1>
+
+        <p>
+            Monitor your emergency assignments and response status.
+        </p>
+
+    </section>
+
+
+    <section class="availability">
+
+        <div class="availability-row">
+
+            <div>
+
+                <strong>
+                    Responder Availability
+                </strong>
+
+                <p id="availabilityStatus"
+                   class="offline">
+
+                    Offline
+
+                </p>
+
+            </div>
+
+            <button
+                id="availabilityBtn"
+                class="toggle off">
+
+                Go Online
+
+            </button>
+
+        </div>
+
+    </section>
+
+
+    <section class="cards">
+
+        <div class="card">
+
+            <h2 id="totalAssignments">
+                0
+            </h2>
+
+            <p>
+                Total Assignments
+            </p>
+
+            <button
+                onclick="location.href='assignments.html'">
+
+                View Assignments
+
+            </button>
+
+        </div>
+
+
+        <div class="card">
+
+            <h2 id="activeAssignments">
+                0
+            </h2>
+
+            <p>
+                Active Emergencies
+            </p>
+
+            <button
+                onclick="location.href='assignments.html'">
+
+                Active Reports
+
+            </button>
+
+        </div>
+
+
+        <div class="card">
+
+            <h2 id="resolvedAssignments">
+                0
+            </h2>
+
+            <p>
+                Resolved Emergencies
+            </p>
+
+            <button
+                onclick="location.href='assignments.html'">
+
+                History
+
+            </button>
+
+        </div>
+
+
+        <div class="card">
+
+            <h2>
+                📍
+            </h2>
+
+            <p>
+                Current Location
+            </p>
+
+            <button id="locationBtn">
+
+                Update Location
+
+            </button>
+
+        </div>
+
+    </section>
+
+
+    <section class="assignments">
+
+        <h2>
+            Latest Assignments
+        </h2>
+
+        <div id="assignmentList">
+
+            Loading assignments...
+
+        </div>
+
+    </section>
+
+</main>
+
+
+<script type="module">
+
+import { auth, db } from "../firebase-config.js";
+
+import {
+    onAuthStateChanged,
+    signOut
+} from "https://www.gstatic.com/firebasejs/12.0.0/firebase-auth.js";
+
+import {
+    ref,
+    get,
+    update,
+    query,
+    orderByChild,
+    equalTo,
+    onValue
+} from "https://www.gstatic.com/firebasejs/12.0.0/firebase-database.js";
+
+
+let currentUser = null;
+let profile = null;
+
+
+/* ================= AUTH ================= */
+
+onAuthStateChanged(auth, async (user) => {
+
+    if (!user) {
+
+        location.href = "../index.html";
+        return;
+
+    }
+
+    currentUser = user;
+
+    document.getElementById("userEmail")
+        .textContent = user.email;
+
+
+    try {
+
+        const snapshot =
+            await get(
+                ref(db, "users/" + user.uid)
+            );
+
+
+        if (!snapshot.exists()) {
+
+            alert("Responder profile not found.");
+            location.href = "../index.html";
+            return;
+
+        }
+
+
+        profile = snapshot.val();
+
+
+        if (profile.role !== "responder") {
+
+            alert("Responder access required.");
+            location.href = "../index.html";
+            return;
+
+        }
+
+
+        updateAvailabilityUI();
+
+        loadAssignments();
+
+    } catch (error) {
+
+        console.error(error);
+
+        alert("Unable to load responder profile.");
+
+    }
+
+});
+
+
+/* ================= LOGOUT ================= */
+
+document.getElementById("logoutBtn")
+.addEventListener("click", async () => {
+
+    await signOut(auth);
+
+    location.href = "../index.html";
+
+});
+
+
+/* ================= AVAILABILITY ================= */
+
+function updateAvailabilityUI() {
+
+    const status =
+        document.getElementById("availabilityStatus");
+
+    const button =
+        document.getElementById("availabilityBtn");
+
+
+    if (profile.available === true) {
+
+        status.textContent =
+            "● Online / Available";
+
+        status.className = "online";
+
+        button.textContent =
+            "Go Offline";
+
+        button.classList.remove("off");
+
+    } else {
+
+        status.textContent =
+            "● Offline";
+
+        status.className = "offline";
+
+        button.textContent =
+            "Go Online";
+
+        button.classList.add("off");
+
+    }
+
+}
+
+
+document.getElementById("availabilityBtn")
+.addEventListener("click", async () => {
+
+    if (!currentUser) return;
+
+
+    const newStatus =
+        profile.available !== true;
+
+
+    try {
+
+        await update(
+            ref(db, "users/" + currentUser.uid),
+            {
+
+                available: newStatus,
+
+                availabilityUpdatedAt:
+                    new Date().toISOString()
+
+            }
+        );
+
+
+        profile.available =
+            newStatus;
+
+
+        updateAvailabilityUI();
+
+
+    } catch (error) {
+
+        console.error(error);
+
+        alert("Unable to update availability.");
+
+    }
+
+});
+
+
+/* ================= ASSIGNMENTS ================= */
+
+function loadAssignments() {
+
+    const incidentQuery =
+        query(
+            ref(db, "incidents"),
+            orderByChild("responderId"),
+            equalTo(currentUser.uid)
+        );
+
+
+    onValue(
+        incidentQuery,
+        (snapshot) => {
+
+            const list =
+                document.getElementById("assignmentList");
+
+
+            let incidents = [];
+
+
+            snapshot.forEach(child => {
+
+                incidents.push({
+                    id: child.key,
+                    ...child.val()
+                });
+
+            });
+
+
+            incidents.sort(
+                (a,b) =>
+                    new Date(b.createdAt || 0) -
+                    new Date(a.createdAt || 0)
+            );
+
+
+            document.getElementById(
+                "totalAssignments"
+            ).textContent =
+                incidents.length;
+
+
+            const active =
+                incidents.filter(
+                    item =>
+                        item.status !== "Resolved"
+                ).length;
+
+
+            const resolved =
+                incidents.filter(
+                    item =>
+                        item.status === "Resolved"
+                ).length;
+
+
+            document.getElementById(
+                "activeAssignments"
+            ).textContent = active;
+
+
+            document.getElementById(
+                "resolvedAssignments"
+            ).textContent = resolved;
+
+
+            if (incidents.length === 0) {
+
+                list.innerHTML = `
+                    <div class="empty">
+                        No emergency assignments yet.
+                    </div>
+                `;
+
+                return;
+
+            }
+
+
+            list.innerHTML = "";
+
+
+            incidents.slice(0, 5)
+            .forEach(incident => {
+
+                const div =
+                    document.createElement("div");
+
+                div.className =
+                    "assignment";
+
+
+                const severityClass =
+                    incident.severity === "Critical"
+                        ? "critical"
+                        : "";
+
+
+                div.innerHTML = `
+
+                    <div class="assignment-header">
+
+                        <div>
+
+                            <strong>
+                                ${escapeHTML(
+                                    incident.type ||
+                                    "Emergency"
+                                )}
+                            </strong>
+
+                            <br>
+
+                            <small>
+                                ID: ${escapeHTML(
+                                    incident.id
+                                )}
+                            </small>
+
+                        </div>
+
+                        <span class="badge ${severityClass}">
+                            ${escapeHTML(
+                                incident.severity ||
+                                "Unknown"
+                            )}
+                        </span>
+
+                    </div>
+
+                    <p>
+                        ${escapeHTML(
+                            incident.description ||
+                            "No description"
+                        )}
+                    </p>
+
+                    <strong>
+                        Status:
+                    </strong>
+
+                    ${escapeHTML(
+                        incident.status ||
+                        "Assigned"
+                    )}
+
+                    <br>
+
+                    <button
+                        class="view"
+                        onclick="
+                            location.href=
+                            'incident.html?id=${encodeURIComponent(
+                                incident.id
+                            )}'
+                        ">
+
+                        Open Incident
+
+                    </button>
+
+                `;
+
+
+                list.appendChild(div);
+
+            });
+
+        }
+    );
+
+}
+
+
+/* ================= LOCATION ================= */
+
+document.getElementById("locationBtn")
+.addEventListener("click", () => {
+
+    if (!navigator.geolocation) {
+
+        alert(
+            "Geolocation is not supported."
+        );
+
+        return;
+
+    }
+
+
+    navigator.geolocation.getCurrentPosition(
+
+        async (position) => {
+
+            try {
+
+                await update(
+                    ref(
+                        db,
+                        "users/" +
+                        currentUser.uid
+                    ),
+                    {
+
+                        latitude:
+                            position.coords.latitude,
+
+                        longitude:
+                            position.coords.longitude,
+
+                        locationUpdatedAt:
+                            new Date().toISOString()
+
+                    }
+                );
+
+
+                alert(
+                    "📍 Location updated successfully."
+                );
+
+
+            } catch (error) {
+
+                console.error(error);
+
+                alert(
+                    "Unable to update location."
+                );
+
+            }
+
+        },
+
+        () => {
+
+            alert(
+                "Please allow location permission."
+            );
+
+        },
+
+        {
+            enableHighAccuracy: true,
+            timeout: 10000,
+            maximumAge: 0
+        }
+
+    );
+
+});
+
+
+/* ================= SECURITY ================= */
+
+function escapeHTML(value) {
+
+    return String(value)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+
+}
+
+</script>
+
+</body>
+</html>

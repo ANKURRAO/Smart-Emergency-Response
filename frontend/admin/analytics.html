@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+
+<title>Analytics | Admin</title>
+
+<style>
+*{box-sizing:border-box;font-family:Arial,sans-serif}
+body{margin:0;background:#f1f5f9;color:#1e293b}
+header{
+background:#0f172a;color:white;padding:18px 6%;
+display:flex;justify-content:space-between;align-items:center
+}
+main{max-width:1200px;margin:auto;padding:30px 20px}
+.cards{
+display:grid;
+grid-template-columns:repeat(auto-fit,minmax(200px,1fr));
+gap:18px;margin:25px 0
+}
+.card{
+background:white;padding:22px;border-radius:14px;
+box-shadow:0 4px 15px rgba(0,0,0,.05)
+}
+.card h2{font-size:30px;margin:0 0 8px}
+.card p{color:#64748b}
+.panel{
+background:white;padding:25px;border-radius:14px;
+margin-bottom:20px
+}
+.row{
+display:flex;justify-content:space-between;
+padding:12px 0;border-bottom:1px solid #e2e8f0
+}
+button{
+border:0;padding:10px 15px;border-radius:8px;
+cursor:pointer;font-weight:bold
+}
+.back{background:#475569;color:white}
+.bar{
+height:22px;background:#e2e8f0;
+border-radius:20px;overflow:hidden
+}
+.bar span{
+display:block;height:100%;
+background:#2563eb
+}
+</style>
+</head>
+
+<body>
+
+<header>
+
+<strong>📊 Emergency Analytics</strong>
+
+<button
+class="back"
+onclick="location.href='dashboard.html'">
+Dashboard
+</button>
+
+</header>
+
+<main>
+
+<h1>System Analytics</h1>
+
+<p>
+Overview of emergency response activity.
+</p>
+
+
+<section class="cards">
+
+<div class="card">
+<h2 id="total">0</h2>
+<p>Total Incidents</p>
+</div>
+
+<div class="card">
+<h2 id="active">0</h2>
+<p>Active Incidents</p>
+</div>
+
+<div class="card">
+<h2 id="resolved">0</h2>
+<p>Resolved Incidents</p>
+</div>
+
+<div class="card">
+<h2 id="critical">0</h2>
+<p>Critical Incidents</p>
+</div>
+
+</section>
+
+
+<section class="panel">
+
+<h2>Emergency Categories</h2>
+
+<div id="categories">
+Loading...
+</div>
+
+</section>
+
+
+<section class="panel">
+
+<h2>Severity Distribution</h2>
+
+<div id="severity">
+Loading...
+</div>
+
+</section>
+
+
+<section class="panel">
+
+<h2>Response Status</h2>
+
+<div id="status">
+Loading...
+</div>
+
+</section>
+
+</main>
+
+
+<script type="module">
+
+import {auth,db} from "../firebase-config.js";
+
+import {
+onAuthStateChanged
+} from "https://www.gstatic.com/firebasejs/12.0.0/firebase-auth.js";
+
+import {
+ref,get
+} from "https://www.gstatic.com/firebasejs/12.0.0/firebase-database.js";
+
+
+onAuthStateChanged(auth,async(user)=>{
+
+if(!user){
+location.href="../index.html";
+return;
+}
+
+const profile=
+await get(ref(db,"users/"+user.uid));
+
+if(
+!profile.exists() ||
+profile.val().role!=="admin"
+){
+
+alert("Admin access required.");
+location.href="../index.html";
+return;
+
+}
+
+loadAnalytics();
+
+});
+
+
+async function loadAnalytics(){
+
+const snapshot=
+await get(ref(db,"incidents"));
+
+let incidents=[];
+
+
+if(snapshot.exists()){
+
+snapshot.forEach(child=>{
+
+incidents.push({
+id:child.key,
+...child.val()
+});
+
+});
+
+}
+
+
+const total=incidents.length;
+
+const active=
+incidents.filter(
+i=>i.status!=="Resolved"
+).length;
+
+const resolved=
+incidents.filter(
+i=>i.status==="Resolved"
+).length;
+
+const critical=
+incidents.filter(
+i=>i.severity==="Critical"
+).length;
+
+
+document.getElementById("total")
+.textContent=total;
+
+document.getElementById("active")
+.textContent=active;
+
+document.getElementById("resolved")
+.textContent=resolved;
+
+document.getElementById("critical")
+.textContent=critical;
+
+
+renderCategories(incidents);
+renderSeverity(incidents);
+renderStatus(incidents);
+
+}
+
+
+/* CATEGORY */
+
+function renderCategories(incidents){
+
+const counts={};
+
+incidents.forEach(i=>{
+
+const type=
+i.type||"Other";
+
+counts[type]=
+(counts[type]||0)+1;
+
+});
+
+
+renderBars(
+document.getElementById("categories"),
+counts
+);
+
+}
+
+
+/* SEVERITY */
+
+function renderSeverity(incidents){
+
+const counts={
+Critical:0,
+High:0,
+Medium:0,
+Low:0
+};
+
+
+incidents.forEach(i=>{
+
+if(counts[i.severity]!==undefined){
+
+counts[i.severity]++;
+
+}
+
+});
+
+
+renderBars(
+document.getElementById("severity"),
+counts
+);
+
+}
+
+
+/* STATUS */
+
+function renderStatus(incidents){
+
+const counts={};
+
+incidents.forEach(i=>{
+
+const status=
+i.status||"Reported";
+
+counts[status]=
+(counts[status]||0)+1;
+
+});
+
+
+renderBars(
+document.getElementById("status"),
+counts
+);
+
+}
+
+
+/* BARS */
+
+function renderBars(container,data){
+
+container.innerHTML="";
+
+
+const total=
+Object.values(data)
+.reduce((a,b)=>a+b,0);
+
+
+Object.entries(data)
+.forEach(([name,count])=>{
+
+const percent=
+total?
+(count/total)*100:
+0;
+
+
+const row=
+document.createElement("div");
+
+row.className="row";
+
+
+row.innerHTML=`
+
+<div style="width:35%">
+<strong>
+${escapeHTML(name)}
+</strong>
+<br>
+${count}
+</div>
+
+<div style="width:60%">
+<div class="bar">
+
+<span
+style="width:${percent}%">
+</span>
+
+</div>
+</div>
+
+`;
+
+
+container.appendChild(row);
+
+});
+
+}
+
+
+function escapeHTML(value){
+
+return String(value)
+.replaceAll("&","&amp;")
+.replaceAll("<","&lt;")
+.replaceAll(">","&gt;")
+.replaceAll('"',"&quot;")
+.replaceAll("'","&#039;");
+
+}
+
+</script>
+
+</body>
+</html>
