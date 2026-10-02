@@ -4,16 +4,15 @@
 // ============================================================
 
 const express = require("express");
-
 const router = express.Router();
 
 const {
     getResponders,
-    getResponderById,
+    getResponder,
+    getAssignments,
     updateResponder,
     updateAvailability,
-    getResponderAssignments,
-    updateResponderLocation
+    updateLocation
 } = require("../controllers/responderController");
 
 const auth = require("../middleware/auth");
@@ -38,7 +37,7 @@ router.get(
 router.get(
     "/:id",
     auth,
-    getResponderById
+    getResponder
 );
 
 // ------------------------------------------------------------
@@ -49,40 +48,8 @@ router.get(
     "/:id/assignments",
     auth,
     roleCheck(["admin", "responder"]),
-    getResponderAssignments
+    getAssignments
 );
 
 // ------------------------------------------------------------
-// Update Responder Profile
-// ------------------------------------------------------------
-
-router.put(
-    "/:id",
-    auth,
-    roleCheck("responder"),
-    updateResponder
-);
-
-// ------------------------------------------------------------
-// Update Availability
-// ------------------------------------------------------------
-
-router.patch(
-    "/:id/availability",
-    auth,
-    roleCheck("responder"),
-    updateAvailability
-);
-
-// ------------------------------------------------------------
-// Update Live Location
-// ------------------------------------------------------------
-
-router.patch(
-    "/:id/location",
-    auth,
-    roleCheck("responder"),
-    updateResponderLocation
-);
-
-module.exports = router;
+//
