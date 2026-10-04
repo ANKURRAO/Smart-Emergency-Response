@@ -4,16 +4,15 @@
 // ============================================================
 
 const express = require("express");
-
 const router = express.Router();
 
 const {
-    getNotifications,
-    getNotificationById,
-    createNotification,
-    markAsRead,
-    markAllAsRead,
-    deleteNotification
+    getUserNotifications,
+    getNotification,
+    createUserNotification,
+    readNotification,
+    readAllNotifications,
+    removeNotification
 } = require("../controllers/notificationController");
 
 const auth = require("../middleware/auth");
@@ -26,7 +25,18 @@ const roleCheck = require("../middleware/roleCheck");
 router.get(
     "/",
     auth,
-    getNotifications
+    getUserNotifications
+);
+
+// ------------------------------------------------------------
+// Mark All Notifications As Read
+// Keep this before /:id routes
+// ------------------------------------------------------------
+
+router.patch(
+    "/read-all",
+    auth,
+    readAllNotifications
 );
 
 // ------------------------------------------------------------
@@ -36,19 +46,19 @@ router.get(
 router.get(
     "/:id",
     auth,
-    getNotificationById
+    getNotification
 );
 
 // ------------------------------------------------------------
 // Create Notification
-// Admin / Backend Services
+// Admin only
 // ------------------------------------------------------------
 
 router.post(
     "/",
     auth,
     roleCheck("admin"),
-    createNotification
+    createUserNotification
 );
 
 // ------------------------------------------------------------
@@ -58,17 +68,7 @@ router.post(
 router.patch(
     "/:id/read",
     auth,
-    markAsRead
-);
-
-// ------------------------------------------------------------
-// Mark All Notifications As Read
-// ------------------------------------------------------------
-
-router.patch(
-    "/read-all",
-    auth,
-    markAllAsRead
+    readNotification
 );
 
 // ------------------------------------------------------------
@@ -78,7 +78,7 @@ router.patch(
 router.delete(
     "/:id",
     auth,
-    deleteNotification
+    removeNotification
 );
 
 module.exports = router;
