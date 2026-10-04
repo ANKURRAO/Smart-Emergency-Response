@@ -42,6 +42,7 @@ router.get(
 
 // ------------------------------------------------------------
 // Get Responder Assignments
+// Admin + Responder
 // ------------------------------------------------------------
 
 router.get(
@@ -52,4 +53,39 @@ router.get(
 );
 
 // ------------------------------------------------------------
-//
+// Update Responder Profile
+// Responder only
+// ------------------------------------------------------------
+
+router.put(
+    "/:id",
+    auth,
+    roleCheck("responder"),
+    updateResponder
+);
+
+// ------------------------------------------------------------
+// Update Availability
+// Responder only
+// ------------------------------------------------------------
+
+router.patch(
+    "/:id/availability",
+    auth,
+    roleCheck("responder"),
+    updateAvailability
+);
+
+// ------------------------------------------------------------
+// Update Live Location
+// Responder only
+// ------------------------------------------------------------
+
+router.patch(
+    "/:id/location",
+    auth,
+    roleCheck("responder"),
+    updateLocation
+);
+
+module.exports = router;

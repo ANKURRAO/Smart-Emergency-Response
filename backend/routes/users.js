@@ -4,12 +4,11 @@
 // ============================================================
 
 const express = require("express");
-
 const router = express.Router();
 
 const {
     getUsers,
-    getUserById,
+    getUser,
     updateUser,
     deleteUser,
     updateUserRole
@@ -37,7 +36,7 @@ router.get(
 router.get(
     "/:id",
     auth,
-    getUserById
+    getUser
 );
 
 // ------------------------------------------------------------
