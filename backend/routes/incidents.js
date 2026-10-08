@@ -4,13 +4,12 @@
 // ============================================================
 
 const express = require("express");
-
 const router = express.Router();
 
 const {
     createIncident,
-    getAllIncidents,
-    getIncidentById,
+    getIncidents,
+    getIncident,
     updateIncident,
     deleteIncident,
     assignResponder,
@@ -41,7 +40,7 @@ router.get(
     "/",
     auth,
     roleCheck(["admin", "responder"]),
-    getAllIncidents
+    getIncidents
 );
 
 // ------------------------------------------------------------
@@ -51,7 +50,7 @@ router.get(
 router.get(
     "/:id",
     auth,
-    getIncidentById
+    getIncident
 );
 
 // ------------------------------------------------------------
