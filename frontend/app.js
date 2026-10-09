@@ -2,7 +2,8 @@ import { auth, db } from "./firebase-config.js";
 
 import {
     ref,
-    set
+    set,
+    get
 } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-database.js";
 
 import {
@@ -50,135 +51,75 @@ function closeLogin() {
 // FIREBASE LOGIN
 // ============================================================
 
+
+
 async function loginUser() {
-
-    const emailElement =
-        document.getElementById("email");
-
-    const passwordElement =
-        document.getElementById("password");
-
-    const message =
-        document.getElementById("loginMessage");
-
-
-    if (!emailElement || !passwordElement) {
-        return;
-    }
-
-
-    const email =
-        emailElement.value.trim();
-
-    const password =
-        passwordElement.value;
-
+    const email = document.getElementById("email")?.value.trim();
+    const password = document.getElementById("password")?.value;
+    const message = document.getElementById("loginMessage");
 
     if (!email || !password) {
-
-        if (message) {
-            message.textContent =
-                "Please enter email and password.";
-        }
-
+        if (message) message.textContent = "Please enter email and password.";
         return;
     }
 
-
-    if (message) {
-        message.textContent =
-            "Logging in...";
-    }
-
+    if (message) message.textContent = "Logging in...";
 
     try {
-
-        await signInWithEmailAndPassword(
+        const credential = await signInWithEmailAndPassword(
             auth,
             email,
             password
         );
 
-
-        if (message) {
-
-            message.textContent =
-                "✅ Login successful!";
-
-        }
-
-
-        alert("✅ Login successful!");
-
-
-        closeLogin();
-
-
-    } catch (error) {
-
-        console.error(
-            "Login Error:",
-            error
+        const snapshot = await get(
+            ref(db, `users/${credential.user.uid}`)
         );
 
-
-        let errorMessage =
-            "❌ Login failed.";
-
-
-        if (
-            error.code ===
-            "auth/invalid-credential"
-        ) {
-
-            errorMessage =
-                "❌ Invalid email or password.";
-
+        if (!snapshot.exists()) {
+            if (message) {
+                message.textContent =
+                    "Login successful, but user profile was not found in the database.";
+            }
+            return;
         }
 
+        const profile = snapshot.val();
+        const role = profile.role || "citizen";
 
-        else if (
-            error.code ===
-            "auth/user-not-found"
-        ) {
+        const dashboards = {
+            citizen: "citizen/dashboard.html",
+            responder: "responder/dashboard.html",
+            admin: "admin/dashboard.html"
+        };
 
-            errorMessage =
-                "❌ No account found with this email.";
+        const destination = dashboards[role];
 
+        if (!destination) {
+            if (message) message.textContent = "Unknown account role.";
+            return;
         }
 
+        if (message) message.textContent = "Login successful. Opening dashboard...";
+        closeLogin();
+        window.location.href = destination;
 
-        else if (
-            error.code ===
-            "auth/wrong-password"
-        ) {
+    } catch (error) {
+        console.error("Login Error:", error);
 
-            errorMessage =
-                "❌ Incorrect password.";
-
-        }
-
-
-        else if (
-            error.code ===
-            "auth/invalid-email"
-        ) {
-
-            errorMessage =
-                "❌ Please enter a valid email.";
-
-        }
-
+        const messages = {
+            "auth/invalid-credential": "Invalid email or password.",
+            "auth/user-not-found": "No account found with this email.",
+            "auth/wrong-password": "Incorrect password.",
+            "auth/invalid-email": "Please enter a valid email.",
+            "auth/too-many-requests": "Too many attempts. Please try again later."
+        };
 
         if (message) {
-
             message.textContent =
-                errorMessage;
-
+                messages[error.code] || `Login failed: ${error.message}`;
         }
-
     }
-
 }
 
 
@@ -187,150 +128,91 @@ async function loginUser() {
 // ============================================================
 
 async function registerUser() {
-
-    const emailElement =
-        document.getElementById("email");
-
-    const passwordElement =
-        document.getElementById("password");
-
-    const message =
-        document.getElementById("loginMessage");
+const emailElement = document.getElementById("email");
+const passwordElement = document.getElementById("password");
+const message = document.getElementById("loginMessage");
 
 
-    if (!emailElement || !passwordElement) {
-        return;
+if (!emailElement || !passwordElement) {
+    console.error("Email or password input not found.");
+    return;
+}
+
+const email = emailElement.value.trim();
+const password = passwordElement.value;
+
+// Check empty fields
+if (!email || !password) {
+    if (message) {
+        message.textContent = "Please enter email and password.";
+    }
+    return;
+}
+
+// Check password length
+if (password.length < 6) {
+    if (message) {
+        message.textContent = "Password must be at least 6 characters.";
+    }
+    return;
+}
+
+if (message) {
+    message.textContent = "Creating account...";
+}
+
+try {
+    // Step 1: Create Firebase Authentication account
+    const credential = await createUserWithEmailAndPassword(
+        auth,
+        email,
+        password
+    );
+
+    const user = credential.user;
+
+    // Step 2: Save user profile in Firebase Realtime Database
+    await set(ref(db, "users/" + user.uid), {
+        email: email,
+        role: "citizen",
+        createdAt: new Date().toISOString()
+    });
+
+    // Step 3: Show success message
+    if (message) {
+        message.textContent =
+            "Account created successfully! Opening dashboard...";
     }
 
+    // Step 4: Close login/register modal
+    closeLogin();
 
-    const email =
-        emailElement.value.trim();
+    // Step 5: Open Citizen Dashboard
+    window.location.href = "citizen/dashboard.html";
 
-    const password =
-        passwordElement.value;
+} catch (error) {
+    console.error("Registration Error:", error);
 
+    let errorMessage = "Unable to create account. Please try again.";
 
-    if (!email || !password) {
-
-        if (message) {
-
-            message.textContent =
-                "Please enter email and password.";
-
-        }
-
-        return;
+    if (error.code === "auth/email-already-in-use") {
+        errorMessage = "An account already exists with this email.";
+    } else if (error.code === "auth/invalid-email") {
+        errorMessage = "Please enter a valid email.";
+    } else if (error.code === "auth/weak-password") {
+        errorMessage = "Password is too weak. Use at least 6 characters.";
+    } else if (error.code === "permission-denied") {
+        errorMessage = "Firebase Database permission denied.";
     }
-
-
-    if (password.length < 6) {
-
-        if (message) {
-
-            message.textContent =
-                "❌ Password must be at least 6 characters.";
-
-        }
-
-        return;
-    }
-
 
     if (message) {
-
-        message.textContent =
-            "Creating account...";
-
+        message.textContent = errorMessage;
     }
+}
 
-
-    try {
-
-        await createUserWithEmailAndPassword(
-            auth,
-            email,
-            password
-        );
-        const user = auth.currentUser;
-
-await set(ref(db, "users/" + user.uid), {
-    email: email,
-    role: "citizen",
-    createdAt: new Date().toISOString()
-});
-
-
-        if (message) {
-
-            message.textContent =
-                "✅ Account created successfully!";
-
-        }
-
-
-        alert(
-            "✅ Account created successfully!"
-        );
-
-
-        closeLogin();
-
-
-    } catch (error) {
-
-        console.error(
-            "Registration Error:",
-            error
-        );
-
-
-        let errorMessage =
-            "❌ Unable to create account.";
-
-
-        if (
-            error.code ===
-            "auth/email-already-in-use"
-        ) {
-
-            errorMessage =
-                "❌ An account already exists with this email.";
-
-        }
-
-
-        else if (
-            error.code ===
-            "auth/invalid-email"
-        ) {
-
-            errorMessage =
-                "❌ Please enter a valid email.";
-
-        }
-
-
-        else if (
-            error.code ===
-            "auth/weak-password"
-        ) {
-
-            errorMessage =
-                "❌ Password is too weak.";
-
-        }
-
-
-        if (message) {
-
-            message.textContent =
-                errorMessage;
-
-        }
-
-    }
 
 }
+
 
 
 // ============================================================
