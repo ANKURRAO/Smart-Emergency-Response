@@ -756,23 +756,55 @@ function createIncidentObject(data) {
 
 
 async function saveIncident(incident) {
+    const user = auth.currentUser;
 
-    const incidentsRef =
-        ref(db, "incidents");
+    if (!user) {
+        throw new Error("Please log in before submitting an incident.");
+    }
 
+    // Get Firebase ID token for backend authentication
+    const token = await user.getIdToken();
 
-    const newIncidentRef =
-        push(incidentsRef);
+    const response = await fetch("http://localhost:5000/api/incidents", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify({
+            incidentId: incident.incidentId,
+            type: incident.type,
+            category: incident.category,
+            description: incident.description,
+            severity: incident.severity,
+            priority: incident.priority,
+            latitude: incident.latitude,
+            longitude: incident.longitude,
+            locationAccuracy: incident.locationAccuracy,
+            landmark: incident.landmark,
+            source: incident.source,
+            userName: incident.userName,
+            userEmail: incident.userEmail
+        })
+    });
 
+    const result = await response.json().catch(() => ({}));
 
-    await set(
-        newIncidentRef,
-        incident
-    );
+    if (!response.ok || result.success === false) {
+        console.error("Incident API error:", response.status, result);
 
+        throw new Error(
+            result.message || `Incident submission failed (${response.status}).`
+        );
+    }
 
-    return newIncidentRef.key;
+    // Return the saved incident ID for the tracking page
+    const savedIncident =
+        result.incident || result.data || {};
 
+    return savedIncident.incidentId ||
+        result.incidentId ||
+        incident.incidentId;
 }
 
 
