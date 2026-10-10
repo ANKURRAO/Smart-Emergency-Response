@@ -1,3 +1,8 @@
+// ============================================================
+// SMART EMERGENCY RESPONSE
+// Main Frontend JavaScript
+// ============================================================
+
 import { auth, db } from "./firebase-config.js";
 
 import {
@@ -26,20 +31,15 @@ let userLocation = null;
 // ============================================================
 
 function openLogin() {
-
-    const modal =
-        document.getElementById("loginModal");
+    const modal = document.getElementById("loginModal");
 
     if (modal) {
         modal.style.display = "flex";
     }
 }
 
-
 function closeLogin() {
-
-    const modal =
-        document.getElementById("loginModal");
+    const modal = document.getElementById("loginModal");
 
     if (modal) {
         modal.style.display = "none";
@@ -48,45 +48,79 @@ function closeLogin() {
 
 
 // ============================================================
+// HELPER: DISPLAY LOGIN MESSAGE
+// ============================================================
+
+function showLoginMessage(text) {
+    const message = document.getElementById("loginMessage");
+
+    if (message) {
+        message.textContent = text;
+    }
+}
+
+
+// ============================================================
 // FIREBASE LOGIN
 // ============================================================
 
-
-
 async function loginUser() {
-    const email = document.getElementById("email")?.value.trim();
-    const password = document.getElementById("password")?.value;
-    const message = document.getElementById("loginMessage");
+    const emailElement = document.getElementById("email");
+    const passwordElement = document.getElementById("password");
 
-    if (!email || !password) {
-        if (message) message.textContent = "Please enter email and password.";
+    if (!emailElement || !passwordElement) {
+        console.error("Login email/password fields were not found.");
+        showLoginMessage("Login form fields were not found.");
         return;
     }
 
-    if (message) message.textContent = "Logging in...";
+    const email = emailElement.value.trim();
+    const password = passwordElement.value;
+
+    if (!email || !password) {
+        showLoginMessage("Please enter email and password.");
+        return;
+    }
+
+    showLoginMessage("Checking your account...");
 
     try {
+        // Step 1: Authenticate with Firebase
         const credential = await signInWithEmailAndPassword(
             auth,
             email,
             password
         );
 
-        const snapshot = await get(
-            ref(db, `users/${credential.user.uid}`)
-        );
+        const user = credential.user;
 
-        if (!snapshot.exists()) {
-            if (message) {
-                message.textContent =
-                    "Login successful, but user profile was not found in the database.";
-            }
+        console.log("Firebase login successful:", user.email);
+        console.log("User UID:", user.uid);
+
+        showLoginMessage("Login successful. Checking your role...");
+
+        // Step 2: Get the user's profile from Realtime Database
+        const profileRef = ref(db, "users/" + user.uid);
+        const profileSnapshot = await get(profileRef);
+
+        if (!profileSnapshot.exists()) {
+            console.error("User profile missing in database.");
+
+            showLoginMessage(
+                "Login succeeded, but your database profile is missing. Contact the administrator."
+            );
             return;
         }
 
-        const profile = snapshot.val();
-        const role = profile.role || "citizen";
+        const profile = profileSnapshot.val();
+        const role = String(profile.role || "")
+            .toLowerCase()
+            .trim();
 
+        console.log("Logged-in email:", user.email);
+        console.log("Logged-in role:", role);
+
+        // Step 3: Select dashboard based on the saved role
         const dashboards = {
             citizen: "citizen/dashboard.html",
             responder: "responder/dashboard.html",
@@ -96,123 +130,158 @@ async function loginUser() {
         const destination = dashboards[role];
 
         if (!destination) {
-            if (message) message.textContent = "Unknown account role.";
+            console.error("Invalid or missing role:", role);
+
+            showLoginMessage(
+                "Your account role is missing or invalid. Contact the administrator."
+            );
             return;
         }
 
-        if (message) message.textContent = "Login successful. Opening dashboard...";
-        closeLogin();
+        // Step 4: Redirect to the correct dashboard
+        showLoginMessage(
+            "Login successful! Role: " + role + ". Opening dashboard..."
+        );
+
         window.location.href = destination;
 
     } catch (error) {
-        console.error("Login Error:", error);
+        console.error("LOGIN ERROR CODE:", error.code);
+        console.error("LOGIN ERROR MESSAGE:", error.message);
+        console.error("Full login error:", error);
 
-        const messages = {
-            "auth/invalid-credential": "Invalid email or password.",
-            "auth/user-not-found": "No account found with this email.",
-            "auth/wrong-password": "Incorrect password.",
-            "auth/invalid-email": "Please enter a valid email.",
-            "auth/too-many-requests": "Too many attempts. Please try again later."
-        };
+        let errorMessage = "Login failed. Please try again.";
 
-        if (message) {
-            message.textContent =
-                messages[error.code] || `Login failed: ${error.message}`;
+        if (
+            error.code === "auth/invalid-credential" ||
+            error.code === "auth/wrong-password" ||
+            error.code === "auth/user-not-found"
+        ) {
+            errorMessage = "Incorrect email or password.";
+
+        } else if (error.code === "auth/invalid-email") {
+            errorMessage = "Please enter a valid email.";
+
+        } else if (error.code === "auth/too-many-requests") {
+            errorMessage = "Too many attempts. Please try again later.";
+
+        } else if (error.code === "auth/network-request-failed") {
+            errorMessage = "Network error. Check your internet connection.";
+
+        } else if (
+            error.code === "PERMISSION_DENIED" ||
+            error.code === "permission-denied" ||
+            error.code === "database/permission-denied"
+        ) {
+            errorMessage =
+                "Cannot read your profile from Firebase Database. Check database rules.";
+
+        } else if (
+            error.code === "auth/operation-not-allowed"
+        ) {
+            errorMessage =
+                "Email/password login is not enabled in Firebase Authentication.";
+
+        } else {
+            errorMessage =
+                "Login error: " +
+                (error.code || error.message || "Unknown error");
         }
+
+        showLoginMessage(errorMessage);
     }
 }
 
 
 // ============================================================
-// FIREBASE REGISTER
+// FIREBASE REGISTRATION
 // ============================================================
 
 async function registerUser() {
-const emailElement = document.getElementById("email");
-const passwordElement = document.getElementById("password");
-const message = document.getElementById("loginMessage");
+    const emailElement = document.getElementById("email");
+    const passwordElement = document.getElementById("password");
 
-
-if (!emailElement || !passwordElement) {
-    console.error("Email or password input not found.");
-    return;
-}
-
-const email = emailElement.value.trim();
-const password = passwordElement.value;
-
-// Check empty fields
-if (!email || !password) {
-    if (message) {
-        message.textContent = "Please enter email and password.";
-    }
-    return;
-}
-
-// Check password length
-if (password.length < 6) {
-    if (message) {
-        message.textContent = "Password must be at least 6 characters.";
-    }
-    return;
-}
-
-if (message) {
-    message.textContent = "Creating account...";
-}
-
-try {
-    // Step 1: Create Firebase Authentication account
-    const credential = await createUserWithEmailAndPassword(
-        auth,
-        email,
-        password
-    );
-
-    const user = credential.user;
-
-    // Step 2: Save user profile in Firebase Realtime Database
-    await set(ref(db, "users/" + user.uid), {
-        email: email,
-        role: "citizen",
-        createdAt: new Date().toISOString()
-    });
-
-    // Step 3: Show success message
-    if (message) {
-        message.textContent =
-            "Account created successfully! Opening dashboard...";
+    if (!emailElement || !passwordElement) {
+        console.error("Registration email/password fields not found.");
+        showLoginMessage("Registration form fields were not found.");
+        return;
     }
 
-    // Step 4: Close login/register modal
-    closeLogin();
+    const email = emailElement.value.trim();
+    const password = passwordElement.value;
 
-    // Step 5: Open Citizen Dashboard
-    window.location.href = "citizen/dashboard.html";
-
-} catch (error) {
-    console.error("Registration Error:", error);
-
-    let errorMessage = "Unable to create account. Please try again.";
-
-    if (error.code === "auth/email-already-in-use") {
-        errorMessage = "An account already exists with this email.";
-    } else if (error.code === "auth/invalid-email") {
-        errorMessage = "Please enter a valid email.";
-    } else if (error.code === "auth/weak-password") {
-        errorMessage = "Password is too weak. Use at least 6 characters.";
-    } else if (error.code === "permission-denied") {
-        errorMessage = "Firebase Database permission denied.";
+    if (!email || !password) {
+        showLoginMessage("Please enter email and password.");
+        return;
     }
 
-    if (message) {
-        message.textContent = errorMessage;
+    if (password.length < 6) {
+        showLoginMessage("Password must be at least 6 characters.");
+        return;
+    }
+
+    showLoginMessage("Creating your account...");
+
+    let createdUser = null;
+
+    try {
+        // Step 1: Create Firebase Authentication account
+        const credential = await createUserWithEmailAndPassword(
+            auth,
+            email,
+            password
+        );
+
+        createdUser = credential.user;
+
+        console.log("Account created:", createdUser.email);
+        console.log("New user UID:", createdUser.uid);
+
+        // Step 2: Save the profile in Realtime Database
+        await set(ref(db, "users/" + createdUser.uid), {
+            email: email,
+            role: "citizen",
+            createdAt: new Date().toISOString()
+        });
+
+        // Step 3: Redirect to Citizen Dashboard
+        showLoginMessage("Account created. Opening Citizen Dashboard...");
+
+        window.location.href = "citizen/dashboard.html";
+
+    } catch (error) {
+        console.error("REGISTRATION ERROR CODE:", error.code);
+        console.error("REGISTRATION ERROR MESSAGE:", error.message);
+        console.error("Full registration error:", error);
+
+        let errorMessage = "Unable to create account. Please try again.";
+
+        if (error.code === "auth/email-already-in-use") {
+            errorMessage = "An account already exists with this email.";
+
+        } else if (error.code === "auth/invalid-email") {
+            errorMessage = "Please enter a valid email.";
+
+        } else if (error.code === "auth/weak-password") {
+            errorMessage = "Password is too weak. Use at least 6 characters.";
+
+        } else if (
+            error.code === "PERMISSION_DENIED" ||
+            error.code === "permission-denied" ||
+            error.code === "database/permission-denied"
+        ) {
+            errorMessage =
+                "Your account may have been created, but the database profile could not be saved. Check Firebase Database rules.";
+
+        } else {
+            errorMessage =
+                "Registration error: " +
+                (error.code || error.message || "Unknown error");
+        }
+
+        showLoginMessage(errorMessage);
     }
 }
-
-
-}
-
 
 
 // ============================================================
@@ -220,24 +289,23 @@ try {
 // ============================================================
 
 async function logoutUser() {
-
     try {
-
         await signOut(auth);
 
-        alert(
-            "✅ You have been logged out."
-        );
+        console.log("User logged out successfully.");
+
+        // Return to the main landing page
+        window.location.href = "../index.html";
 
     } catch (error) {
+        console.error("LOGOUT ERROR CODE:", error.code);
+        console.error("LOGOUT ERROR MESSAGE:", error.message);
 
-        console.error(
-            "Logout Error:",
-            error
+        alert(
+            "Unable to log out: " +
+            (error.message || "Please try again.")
         );
-
     }
-
 }
 
 
@@ -245,83 +313,50 @@ async function logoutUser() {
 // FIREBASE AUTH STATE
 // ============================================================
 
-onAuthStateChanged(
-    auth,
-    function(user) {
-
-        if (user) {
-
-            console.log(
-                "✅ Logged in user:",
-                user.email
-            );
-
-            console.log(
-                "User UID:",
-                user.uid
-            );
-
-        }
-
-        else {
-
-            console.log(
-                "ℹ️ No user is currently logged in."
-            );
-
-        }
-
+onAuthStateChanged(auth, function (user) {
+    if (user) {
+        console.log("Currently signed-in user:", user.email);
+        console.log("Current user UID:", user.uid);
+    } else {
+        console.log("No user is currently signed in.");
     }
-);
+});
 
 
 // ============================================================
-// SOS
+// SOS DEMO
 // ============================================================
 
 function startSOS() {
-
-    const confirmation =
-        confirm(
-            "This is a project demo. Start emergency SOS?"
-        );
-
+    const confirmation = confirm(
+        "This is a project demo. Start emergency SOS?"
+    );
 
     if (!confirmation) {
         return;
     }
 
-
     getLocation();
 
-
     alert(
-        "🚨 SOS initiated!\n\n" +
-        "In the complete system, the incident would be " +
-        "sent to the emergency control center."
+        "SOS demo started.\n\n" +
+        "Note: This demo button does not send a real emergency alert."
     );
-
 }
 
 
 // ============================================================
-// SCROLL TO REPORT
+// SCROLL TO REPORT SECTION
 // ============================================================
 
 function scrollToReport() {
-
-    const reportSection =
-        document.getElementById("report");
-
+    const reportSection = document.getElementById("report");
 
     if (reportSection) {
-
         reportSection.scrollIntoView({
             behavior: "smooth"
         });
-
     }
-
 }
 
 
@@ -330,227 +365,110 @@ function scrollToReport() {
 // ============================================================
 
 function getLocation() {
-
-    const status =
-        document.getElementById(
-            "locationStatus"
-        );
-
+    const status = document.getElementById("locationStatus");
 
     if (!navigator.geolocation) {
-
         if (status) {
-
             status.textContent =
                 "Geolocation is not supported by this browser.";
-
         }
-
         return;
     }
 
-
     if (status) {
-
-        status.textContent =
-            "📍 Getting your location...";
-
+        status.textContent = "Getting your location...";
     }
 
-
     navigator.geolocation.getCurrentPosition(
-
-        function(position) {
-
+        function (position) {
             userLocation = {
-
-                latitude:
-                    position.coords.latitude,
-
-                longitude:
-                    position.coords.longitude
-
+                latitude: position.coords.latitude,
+                longitude: position.coords.longitude
             };
 
-
             if (status) {
-
-                status.textContent =
-                    "✅ Location captured successfully.";
-
+                status.textContent = "Location captured successfully.";
             }
 
-
-            console.log(
-                "User Location:",
-                userLocation
-            );
-
+            console.log("User location:", userLocation);
         },
 
-
-        function(error) {
+        function (error) {
+            console.error("LOCATION ERROR:", error.code, error.message);
 
             if (status) {
-
                 status.textContent =
-                    "❌ Unable to access location.";
-
+                    "Unable to access location. Allow location permission and try again.";
             }
+        },
 
-
-            console.log(
-                "Location Error:",
-                error
-            );
-
+        {
+            enableHighAccuracy: true,
+            timeout: 10000,
+            maximumAge: 0
         }
-
     );
-
 }
 
 
 // ============================================================
-// SUBMIT INCIDENT
+// SUBMIT INCIDENT - CURRENTLY DEMO ONLY
 // ============================================================
 
 function submitIncident() {
+    const typeElement = document.getElementById("incidentType");
+    const severityElement = document.getElementById("severity");
+    const descriptionElement = document.getElementById("description");
 
-    const typeElement =
-        document.getElementById(
-            "incidentType"
-        );
-
-
-    const severityElement =
-        document.getElementById(
-            "severity"
-        );
-
-
-    const descriptionElement =
-        document.getElementById(
-            "description"
-        );
-
-
-    if (
-        !typeElement ||
-        !severityElement ||
-        !descriptionElement
-    ) {
-
+    if (!typeElement || !severityElement || !descriptionElement) {
+        console.error("Incident form fields were not found.");
         return;
-
     }
 
-
-    const type =
-        typeElement.value;
-
-
-    const severity =
-        severityElement.value;
-
-
-    const description =
-        descriptionElement.value;
-
-
-    // --------------------------------------------------------
-    // VALIDATION
-    // --------------------------------------------------------
+    const type = typeElement.value;
+    const severity = severityElement.value;
+    const description = descriptionElement.value.trim();
 
     if (!type) {
-
-        alert(
-            "Please select incident type."
-        );
-
+        alert("Please select incident type.");
         return;
     }
-
 
     if (!severity) {
-
-        alert(
-            "Please select severity."
-        );
-
+        alert("Please select severity.");
         return;
     }
 
-
-    if (!description.trim()) {
-
-        alert(
-            "Please describe the incident."
-        );
-
+    if (!description) {
+        alert("Please describe the incident.");
         return;
     }
-
 
     if (!userLocation) {
-
-        alert(
-            "Please share your location first."
-        );
-
+        alert("Please capture your location first.");
         return;
     }
 
-
-    // --------------------------------------------------------
-    // CREATE INCIDENT
-    // --------------------------------------------------------
-
     const incident = {
-
-        id:
-            "INC-" +
-            Date.now(),
-
-        type:
-            type,
-
-        severity:
-            severity,
-
-        description:
-            description,
-
-        latitude:
-            userLocation.latitude,
-
-        longitude:
-            userLocation.longitude,
-
-        status:
-            "Reported",
-
-        createdAt:
-            new Date().toISOString()
-
+        id: "INC-" + Date.now(),
+        type: type,
+        severity: severity,
+        description: description,
+        latitude: userLocation.latitude,
+        longitude: userLocation.longitude,
+        status: "Reported",
+        createdAt: new Date().toISOString()
     };
 
-
-    console.log(
-        "🚨 Incident Created:",
-        incident
-    );
-
+    console.log("Demo incident created:", incident);
 
     alert(
-        "🚨 Incident report created successfully!\n\n" +
-        "Incident ID: " +
-        incident.id
+        "Incident demo created.\n\n" +
+        "Incident ID: " + incident.id +
+        "\n\nNote: This incident has NOT been saved to the database."
     );
 
-
     descriptionElement.value = "";
-
 }
 
 
@@ -558,29 +476,12 @@ function submitIncident() {
 // MAKE FUNCTIONS AVAILABLE TO HTML
 // ============================================================
 
-window.openLogin =
-    openLogin;
-
-window.closeLogin =
-    closeLogin;
-
-window.loginUser =
-    loginUser;
-
-window.registerUser =
-    registerUser;
-
-window.logoutUser =
-    logoutUser;
-
-window.startSOS =
-    startSOS;
-
-window.scrollToReport =
-    scrollToReport;
-
-window.getLocation =
-    getLocation;
-
-window.submitIncident =
-    submitIncident;
+window.openLogin = openLogin;
+window.closeLogin = closeLogin;
+window.loginUser = loginUser;
+window.registerUser = registerUser;
+window.logoutUser = logoutUser;
+window.startSOS = startSOS;
+window.scrollToReport = scrollToReport;
+window.getLocation = getLocation;
+window.submitIncident = submitIncident;
