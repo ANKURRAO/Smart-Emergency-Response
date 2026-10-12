@@ -279,15 +279,9 @@ async function createIncident(req, res, next) {
             );
 
         
-        try {
-            await sendIncidentNotification(incident);
-        } catch (notificationError) {
-            console.error(
-                "Incident saved, but notification failed:",
-                notificationError.message
-            );
-        }
-
+        await sendIncidentNotification(
+    incident
+);
         return res.status(201).json({
             success: true,
             message: "Emergency incident created successfully.",
