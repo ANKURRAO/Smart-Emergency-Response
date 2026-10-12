@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -24,6 +25,7 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
+            gap: 12px;
         }
 
         main {
@@ -36,7 +38,7 @@
             background: white;
             padding: 30px;
             border-radius: 16px;
-            box-shadow: 0 5px 25px rgba(0,0,0,.08);
+            box-shadow: 0 5px 25px rgba(0, 0, 0, 0.08);
         }
 
         h1 {
@@ -46,6 +48,7 @@
         .subtitle {
             color: #64748b;
             margin-bottom: 25px;
+            line-height: 1.5;
         }
 
         label {
@@ -62,11 +65,25 @@
             border: 1px solid #cbd5e1;
             border-radius: 8px;
             font-size: 15px;
+            background: white;
         }
 
         textarea {
             min-height: 130px;
             resize: vertical;
+        }
+
+        button {
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            padding: 12px 16px;
+            font-size: 14px;
+        }
+
+        button:disabled {
+            opacity: 0.65;
+            cursor: not-allowed;
         }
 
         .location-box {
@@ -92,6 +109,10 @@
             font-size: 16px;
         }
 
+        .submit:hover {
+            background: #b91c1c;
+        }
+
         .back {
             background: #475569;
             color: white;
@@ -100,12 +121,30 @@
         #message {
             margin-top: 18px;
             font-weight: bold;
+            line-height: 1.6;
+            overflow-wrap: anywhere;
         }
 
         .coordinates {
             font-size: 13px;
             color: #475569;
             margin-top: 8px;
+            line-height: 1.6;
+        }
+
+        @media (max-width: 600px) {
+            main {
+                margin: 15px auto;
+                padding: 12px;
+            }
+
+            .form-box {
+                padding: 20px;
+            }
+
+            header {
+                padding: 15px;
+            }
         }
     </style>
 </head>
@@ -114,14 +153,16 @@
 
 <header>
     <strong>🚨 Smart Emergency Response</strong>
-    <button class="back"
-            onclick="location.href='dashboard.html'">
+
+    <button
+        class="back"
+        type="button"
+        onclick="location.href='dashboard.html'">
         Dashboard
     </button>
 </header>
 
 <main>
-
     <div class="form-box">
 
         <h1>Report an Emergency</h1>
@@ -132,441 +173,340 @@
 
         <form id="incidentForm">
 
-            <label for="type">
-                Emergency Type *
-            </label>
-
+            <label for="type">Emergency Type *</label>
             <select id="type" required>
-
-                <option value="">
-                    Select emergency type
-                </option>
-
-                <option value="Medical">
-                    🏥 Medical Emergency
-                </option>
-
-                <option value="Fire">
-                    🔥 Fire
-                </option>
-
-                <option value="Accident">
-                    🚗 Road Accident
-                </option>
-
-                <option value="Crime">
-                    🚔 Crime / Security
-                </option>
-
-                <option value="Natural Disaster">
-                    🌪️ Natural Disaster
-                </option>
-
-                <option value="Flood">
-                    🌊 Flood
-                </option>
-
-                <option value="Other">
-                    ⚠️ Other
-                </option>
-
+                <option value="">Select emergency type</option>
+                <option value="Medical">🏥 Medical Emergency</option>
+                <option value="Fire">🔥 Fire</option>
+                <option value="Accident">🚗 Road Accident</option>
+                <option value="Crime">🚔 Crime / Security</option>
+                <option value="Natural Disaster">🌪️ Natural Disaster</option>
+                <option value="Flood">🌊 Flood</option>
+                <option value="Other">⚠️ Other</option>
             </select>
 
-
-            <label for="severity">
-                Severity *
-            </label>
-
+            <label for="severity">Severity *</label>
             <select id="severity" required>
-
-                <option value="">
-                    Select severity
-                </option>
-
-                <option value="Low">
-                    Low
-                </option>
-
-                <option value="Medium">
-                    Medium
-                </option>
-
-                <option value="High">
-                    High
-                </option>
-
-                <option value="Critical">
-                    Critical
-                </option>
-
+                <option value="">Select severity</option>
+                <option value="Low">Low</option>
+                <option value="Medium">Medium</option>
+                <option value="High">High</option>
+                <option value="Critical">Critical</option>
             </select>
 
-
-            <label for="description">
-                Emergency Description *
-            </label>
-
+            <label for="description">Emergency Description *</label>
             <textarea
                 id="description"
                 maxlength="1000"
                 placeholder="Explain what happened, number of people affected, injuries, danger etc."
                 required></textarea>
 
-            <small>
-                Maximum 1000 characters.
-            </small>
+            <small>Maximum 1000 characters.</small>
 
-
-            <label>
-                Emergency Location *
-            </label>
+            <label>Emergency Location *</label>
 
             <div class="location-box">
-
                 <button
                     type="button"
                     class="location-btn"
                     id="locationBtn">
-
                     📍 Get My Current Location
-
                 </button>
 
-                <div
-                    id="locationStatus"
-                    class="coordinates">
-
+                <div id="locationStatus" class="coordinates">
                     Location not selected.
-
                 </div>
-
             </div>
 
-
-            <label for="landmark">
-                Nearby Landmark / Address
-            </label>
-
+            <label for="landmark">Nearby Landmark / Address</label>
             <input
                 id="landmark"
                 type="text"
                 maxlength="250"
                 placeholder="Example: Near railway station">
 
-
             <button
                 type="submit"
                 class="submit"
                 id="submitBtn">
-
                 🚨 Submit Emergency Report
-
             </button>
 
         </form>
 
-        <div id="message"></div>
+        <div id="message" role="status" aria-live="polite"></div>
 
     </div>
-
 </main>
 
-
 <script type="module">
+    import { auth, db } from "../firebase-config.js";
 
-import { auth, db } from "../firebase-config.js";
+    import {
+        onAuthStateChanged
+    } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-auth.js";
 
-import {
-    onAuthStateChanged
-} from "https://www.gstatic.com/firebasejs/12.0.0/firebase-auth.js";
+    import {
+        ref,
+        get
+    } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-database.js";
 
-import {
-    ref,
-    get,
-    push,
-    set
-} from "https://www.gstatic.com/firebasejs/12.0.0/firebase-database.js";
+    // =========================================
+    // CONFIGURATION
+    // =========================================
 
+    const API_URL = "http://localhost:5000/api/incidents";
 
-let currentUser = null;
-let userLocation = null;
+    let currentUser = null;
+    let userLocation = null;
+    let authReady = false;
+    let isSubmitting = false;
 
+    const form = document.getElementById("incidentForm");
+    const message = document.getElementById("message");
+    const submitBtn = document.getElementById("submitBtn");
+    const locationBtn = document.getElementById("locationBtn");
+    const locationStatus = document.getElementById("locationStatus");
 
-/* ================= AUTH ================= */
+    // =========================================
+    // MESSAGE HELPER
+    // =========================================
 
-onAuthStateChanged(auth, async (user) => {
-
-    if (!user) {
-
-        location.href = "../index.html";
-        return;
-
+    function showMessage(text, color = "red") {
+        message.textContent = text;
+        message.style.color = color;
     }
 
-    currentUser = user;
+    // =========================================
+    // AUTHENTICATION AND CITIZEN ROLE
+    // =========================================
 
-    try {
+    onAuthStateChanged(auth, async (user) => {
+        authReady = true;
+        currentUser = null;
 
-        const snapshot =
-            await get(ref(db, "users/" + user.uid));
-
-        if (!snapshot.exists()) {
-
-            alert("Citizen profile not found.");
+        if (!user) {
             location.href = "../index.html";
             return;
-
         }
 
-        if (snapshot.val().role !== "citizen") {
+        try {
+            const snapshot = await get(ref(db, "users/" + user.uid));
 
-            alert("Citizen access required.");
-            location.href = "../index.html";
+            if (!snapshot.exists()) {
+                showMessage("Citizen profile not found. Please contact the administrator.");
+                return;
+            }
 
+            const profile = snapshot.val();
+
+            if (profile.role !== "citizen") {
+                showMessage("Citizen access required.");
+                return;
+            }
+
+            currentUser = user;
+        } catch (error) {
+            console.error("Profile verification failed:", error);
+            showMessage(
+                "Unable to verify your profile. Please refresh and try again."
+            );
+        }
+    });
+
+    // =========================================
+    // GET CURRENT LOCATION
+    // =========================================
+
+    locationBtn.addEventListener("click", () => {
+        if (!navigator.geolocation) {
+            locationStatus.textContent =
+                "Your browser does not support location services.";
+            return;
         }
 
-    } catch (error) {
+        locationBtn.disabled = true;
+        locationStatus.textContent = "Getting your location...";
 
-        console.error(error);
+        navigator.geolocation.getCurrentPosition(
+            (position) => {
+                userLocation = {
+                    latitude: position.coords.latitude,
+                    longitude: position.coords.longitude
+                };
 
-    }
+                locationStatus.textContent =
+                    "✅ Location captured\n" +
+                    "Latitude: " + userLocation.latitude.toFixed(6) + "\n" +
+                    "Longitude: " + userLocation.longitude.toFixed(6);
 
-});
+                locationStatus.style.whiteSpace = "pre-line";
+                locationBtn.disabled = false;
+            },
+            (error) => {
+                console.error("Geolocation failed:", error);
 
+                userLocation = null;
 
-/* ================= LOCATION ================= */
+                if (error.code === error.PERMISSION_DENIED) {
+                    locationStatus.textContent =
+                        "Location permission denied. Allow location access and try again.";
+                } else if (error.code === error.TIMEOUT) {
+                    locationStatus.textContent =
+                        "Location request timed out. Please try again.";
+                } else {
+                    locationStatus.textContent =
+                        "Unable to get location. Please try again.";
+                }
 
-document.getElementById("locationBtn")
-.addEventListener("click", () => {
+                locationBtn.disabled = false;
+            },
+            {
+                enableHighAccuracy: true,
+                timeout: 15000,
+                maximumAge: 0
+            }
+        );
+    });
 
-    const status =
-        document.getElementById("locationStatus");
+    // =========================================
+    // SUBMIT EMERGENCY THROUGH BACKEND API
+    // =========================================
 
-    if (!navigator.geolocation) {
+    form.addEventListener("submit", async (event) => {
+        event.preventDefault();
 
-        status.textContent =
-            "Geolocation is not supported.";
+        if (isSubmitting) {
+            return;
+        }
 
-        return;
+        if (!authReady) {
+            showMessage("Please wait while your login is verified.");
+            return;
+        }
 
-    }
+        if (!currentUser) {
+            showMessage("Please log in with a citizen account first.");
+            return;
+        }
 
-    status.textContent =
-        "Getting your location...";
+        if (!userLocation) {
+            showMessage("❌ Please capture your emergency location.");
+            return;
+        }
 
-    navigator.geolocation.getCurrentPosition(
+        const type = document.getElementById("type").value;
+        const severity = document.getElementById("severity").value;
+        const description = document.getElementById("description").value.trim();
+        const landmark = document.getElementById("landmark").value.trim();
 
-        (position) => {
+        if (!type || !severity || !description) {
+            showMessage("Please fill in all required fields.");
+            return;
+        }
 
-            userLocation = {
+        if (description.length > 1000) {
+            showMessage("Description must be 1000 characters or fewer.");
+            return;
+        }
 
-                latitude:
-                    position.coords.latitude,
+        isSubmitting = true;
+        submitBtn.disabled = true;
+        locationBtn.disabled = true;
+        submitBtn.textContent = "Submitting...";
+        showMessage("Sending your emergency report...", "#1d4ed8");
 
-                longitude:
-                    position.coords.longitude
+        try {
+            // Get a fresh Firebase ID token for backend authentication.
+            const token = await currentUser.getIdToken();
 
+            const incidentData = {
+                type: type,
+                category: type,
+                severity: severity,
+                description: description,
+                landmark: landmark,
+                latitude: userLocation.latitude,
+                longitude: userLocation.longitude
             };
 
-            status.innerHTML = `
-                ✅ Location captured<br>
-                Latitude: ${userLocation.latitude.toFixed(6)}<br>
-                Longitude: ${userLocation.longitude.toFixed(6)}
-            `;
+            // Do not write incidents directly from the browser to Firebase.
+            const response = await fetch(API_URL, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${token}`
+                },
+                body: JSON.stringify(incidentData)
+            });
 
-        },
+            const result = await response.json().catch(() => ({}));
 
-        () => {
+            if (!response.ok || result.success !== true) {
+                if (response.status === 401) {
+                    throw new Error(
+                        "Login verification failed. Please log in again."
+                    );
+                }
 
-            status.textContent =
-                "Unable to get location. Please allow location permission.";
+                if (response.status === 403) {
+                    throw new Error(
+                        "Access denied. Check your citizen role and backend permissions."
+                    );
+                }
 
-        },
+                throw new Error(
+                    result.message ||
+                    `Server returned HTTP ${response.status}.`
+                );
+            }
 
-        {
-            enableHighAccuracy: true,
-            timeout: 10000,
-            maximumAge: 0
+            const incident = result.incident || {};
+            const incidentId =
+                incident.incidentId || incident.id || incident.key;
+
+            showMessage(
+                "✅ Emergency reported successfully.",
+                "green"
+            );
+
+            // Reset the form only after the backend confirms success.
+            form.reset();
+            userLocation = null;
+            locationStatus.textContent = "Location not selected.";
+
+            setTimeout(() => {
+                if (incidentId) {
+                    location.href =
+                        "tracking.html?id=" +
+                        encodeURIComponent(incidentId);
+                } else {
+                    location.href = "incidents.html";
+                }
+            }, 1200);
+
+        } catch (error) {
+            console.error("Incident submission failed:", error);
+
+            let errorMessage = error.message ||
+                "An unexpected error occurred.";
+
+            if (
+                error instanceof TypeError &&
+                error.message.toLowerCase().includes("fetch")
+            ) {
+                errorMessage =
+                    "Cannot connect to the backend. Make sure npm start is running on port 5000.";
+            }
+
+            showMessage("❌ Failed to submit report: " + errorMessage);
+        } finally {
+            isSubmitting = false;
+            submitBtn.disabled = false;
+            locationBtn.disabled = false;
+            submitBtn.textContent = "🚨 Submit Emergency Report";
         }
-
-    );
-
-});
-
-
-/* ================= SUBMIT ================= */
-
-document.getElementById("incidentForm")
-.addEventListener("submit", async (event) => {
-
-    event.preventDefault();
-
-    const message =
-        document.getElementById("message");
-
-    const submitBtn =
-        document.getElementById("submitBtn");
-
-    if (!currentUser) {
-
-        message.textContent =
-            "Please login first.";
-
-        return;
-
-    }
-
-    if (!userLocation) {
-
-        message.textContent =
-            "❌ Please capture your emergency location.";
-
-        return;
-
-    }
-
-    const type =
-        document.getElementById("type").value;
-
-    const severity =
-        document.getElementById("severity").value;
-
-    const description =
-        document.getElementById("description").value.trim();
-
-    const landmark =
-        document.getElementById("landmark").value.trim();
-
-    if (!type || !severity || !description) {
-
-        message.textContent =
-            "Please fill all required fields.";
-
-        return;
-
-    }
-
-
-    submitBtn.disabled = true;
-
-    submitBtn.textContent =
-        "Submitting...";
-
-
-    try {
-
-        const incidentRef =
-            push(ref(db, "incidents"));
-
-        const incidentId =
-            incidentRef.key;
-
-        const incident = {
-
-            incidentId: incidentId,
-
-            userId: currentUser.uid,
-
-            userEmail: currentUser.email,
-
-            type: type,
-
-            category: type,
-
-            severity: severity,
-
-            description: description,
-
-            landmark: landmark,
-
-            latitude:
-                userLocation.latitude,
-
-            longitude:
-                userLocation.longitude,
-
-            location: {
-
-                latitude:
-                    userLocation.latitude,
-
-                longitude:
-                    userLocation.longitude
-
-            },
-
-            status: "Reported",
-
-            priority:
-                severity === "Critical"
-                    ? "Critical"
-                    : severity === "High"
-                        ? "High"
-                        : "Normal",
-
-            source: "Citizen Report",
-
-            responderId: null,
-
-            responderName: null,
-
-            aiAnalysis: null,
-
-            createdAt:
-                new Date().toISOString(),
-
-            updatedAt:
-                new Date().toISOString()
-
-        };
-
-
-        await set(
-            incidentRef,
-            incident
-        );
-
-
-        await set(
-            ref(
-                db,
-                `userIncidents/${currentUser.uid}/${incidentId}`
-            ),
-            true
-        );
-
-
-        message.style.color = "green";
-
-        message.textContent =
-            "✅ Emergency reported successfully.";
-
-        setTimeout(() => {
-
-            location.href =
-                `tracking.html?id=${incidentId}`;
-
-        }, 1200);
-
-
-    } catch (error) {
-
-        console.error(error);
-
-        message.style.color = "red";
-
-        message.textContent =
-            "❌ Failed to submit emergency report.";
-
-        submitBtn.disabled = false;
-
-        submitBtn.textContent =
-            "🚨 Submit Emergency Report";
-
-    }
-
-});
-
+    });
 </script>
 
 </body>
