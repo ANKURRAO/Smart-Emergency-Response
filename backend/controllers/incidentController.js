@@ -281,7 +281,15 @@ async function createIncident(req, res, next) {
         
         
 try {
-    await sendIncidentNotification(incident);
+    
+await sendIncidentNotification({
+    userId: incident.userId || userId,
+    incidentId: incident.id || incident.incidentId,
+    title: "Emergency Report Received",
+    message: "Your emergency report has been received successfully.",
+    type: "incident"
+});
+
 } catch (notificationError) {
     console.error(
         "Incident saved, but notification failed:",
