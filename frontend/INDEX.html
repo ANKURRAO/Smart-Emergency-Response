@@ -1,50 +1,64 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#080d18">
 
-    <title>Smart Emergency Response</title>
+    <title>Smart Emergency Response | Command Center</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 
     <link rel="stylesheet" href="style.css">
 </head>
 
 <body>
 
+    <div class="ambient ambient-one"></div>
+    <div class="ambient ambient-two"></div>
+
+    <!-- NAVBAR -->
     <header class="navbar">
 
-        <div class="logo">
-            🚨 Smart Response
-        </div>
+        <a href="#home" class="logo">
+            <span class="logo-icon">🚨</span>
+            <span>SMART<span class="logo-highlight">RESPONSE</span></span>
+        </a>
 
         <nav>
             <a href="#home">Home</a>
-            <a href="#report">Report</a>
+            <a href="#report">Report Incident</a>
+            <a href="#features">Features</a>
             <a href="#about">About</a>
-            <button onclick="openLogin()">Login</button>
+
+            <button onclick="openLogin()" class="nav-login">
+                Login <span>↗</span>
+            </button>
         </nav>
 
     </header>
 
-
     <main>
 
         <!-- HERO SECTION -->
-
         <section id="home" class="hero">
 
             <div class="hero-content">
 
-                <p class="badge">
-                    🚨 SMART EMERGENCY SYSTEM
-                </p>
+                <div class="badge">
+                    <span class="badge-dot"></span>
+                    SMART EMERGENCY NETWORK
+                </div>
 
                 <h1>
-                    Emergency Response
-                    <span>Made Smarter</span>
+                    Every Second
+                    <span>Can Save A Life.</span>
                 </h1>
 
-                <p>
+                <p class="hero-description">
                     Report emergencies, share your location
                     and connect with emergency responders
                     through one intelligent platform.
@@ -53,41 +67,92 @@
                 <div class="hero-buttons">
 
                     <button class="sos-btn" onclick="startSOS()">
-                        🆘 EMERGENCY SOS
+                        <span class="sos-icon">🆘</span>
+                        EMERGENCY SOS
+                        <span class="button-arrow">↗</span>
                     </button>
 
                     <button class="report-btn"
                             onclick="scrollToReport()">
                         Report Incident
+                        <span>→</span>
                     </button>
+
+                </div>
+
+                <div class="hero-trust">
+
+                    <div class="trust-icon">✓</div>
+
+                    <span>
+                        Built for faster emergency coordination
+                    </span>
 
                 </div>
 
             </div>
 
+            <!-- SYSTEM STATUS PANEL -->
+            <div class="hero-visual">
 
-            <div class="hero-card">
+                <div class="visual-top">
+                    <span>LIVE NETWORK STATUS</span>
+                    <span class="live-label">
+                        <span class="live-dot"></span>
+                        ACTIVE
+                    </span>
+                </div>
 
-                <div class="status-dot"></div>
+                <div class="network-visual">
 
-                <h3>System Status</h3>
+                    <div class="network-ring ring-one"></div>
+                    <div class="network-ring ring-two"></div>
+                    <div class="network-ring ring-three"></div>
 
-                <p>Emergency Network</p>
+                    <div class="network-center">
+                        <span>🚨</span>
+                    </div>
 
-                <strong>● ONLINE</strong>
+                    <div class="network-point point-one"></div>
+                    <div class="network-point point-two"></div>
+                    <div class="network-point point-three"></div>
+
+                </div>
+
+                <div class="visual-heading">
+                    <span class="status-dot"></span>
+                    <div>
+                        <h3>System Operational</h3>
+                        <p>Emergency Network</p>
+                    </div>
+                </div>
 
                 <div class="stats">
 
-                    <div>
+                    <div class="stat-item">
                         <b>24/7</b>
                         <small>Monitoring</small>
                     </div>
 
-                    <div>
+                    <div class="stat-divider"></div>
+
+                    <div class="stat-item">
                         <b>LIVE</b>
                         <small>Response</small>
                     </div>
 
+                    <div class="stat-divider"></div>
+
+                    <div class="stat-item">
+                        <b>AI</b>
+                        <small>Analysis</small>
+                    </div>
+
+                </div>
+
+                <div class="visual-footer">
+                    <span>SECURE RESPONSE NETWORK</span>
+                    <span>● CONNECTED</span>
                 </div>
 
             </div>
@@ -96,92 +161,72 @@
 
 
         <!-- REPORT SECTION -->
-
         <section id="report" class="report-section">
 
             <div class="section-heading">
 
-                <p>INCIDENT REPORTING</p>
+                <p>01 / INCIDENT REPORTING</p>
 
-                <h2>Report an Emergency</h2>
+                <h2>
+                    Report an
+                    <span>Emergency.</span>
+                </h2>
 
                 <span>
-                    Provide the required information
-                    so responders can act quickly.
+                    Provide the required information so responders
+                    can act quickly.
                 </span>
 
             </div>
 
-
             <div class="report-card">
 
-                <label>Incident Type</label>
+                <div class="form-header">
+                    <div class="form-icon">🚨</div>
+
+                    <div>
+                        <h3>Emergency Details</h3>
+                        <p>Complete the information below</p>
+                    </div>
+
+                    <span class="secure-tag">SECURE FORM</span>
+                </div>
+
+                <div class="form-divider"></div>
+
+                <label for="incidentType">Incident Type</label>
 
                 <select id="incidentType">
 
-                    <option value="">
-                        Select incident type
-                    </option>
-
-                    <option value="accident">
-                        🚗 Road Accident
-                    </option>
-
-                    <option value="fire">
-                        🔥 Fire
-                    </option>
-
-                    <option value="medical">
-                        🏥 Medical Emergency
-                    </option>
-
-                    <option value="crime">
-                        🚔 Security / Crime
-                    </option>
-
-                    <option value="flood">
-                        🌊 Flood
-                    </option>
-
-                    <option value="other">
-                        ⚠️ Other
-                    </option>
+                    <option value="">Select incident type</option>
+                    <option value="accident">🚗 Road Accident</option>
+                    <option value="fire">🔥 Fire</option>
+                    <option value="medical">🏥 Medical Emergency</option>
+                    <option value="crime">🚔 Security / Crime</option>
+                    <option value="flood">🌊 Flood</option>
+                    <option value="other">⚠️ Other</option>
 
                 </select>
 
 
-                <label>Severity</label>
+                <label for="severity">Severity Level</label>
 
                 <select id="severity">
 
-                    <option value="">
-                        Select severity
-                    </option>
-
-                    <option value="low">
-                        🟢 Low
-                    </option>
-
-                    <option value="medium">
-                        🟡 Medium
-                    </option>
-
-                    <option value="high">
-                        🔴 High
-                    </option>
-
-                    <option value="critical">
-                        🚨 Critical
-                    </option>
+                    <option value="">Select severity</option>
+                    <option value="low">🟢 Low</option>
+                    <option value="medium">🟡 Medium</option>
+                    <option value="high">🔴 High</option>
+                    <option value="critical">🚨 Critical</option>
 
                 </select>
 
 
-                <label>Description</label>
+                <label for="description">Incident Description</label>
 
                 <textarea
                     id="description"
-                    placeholder="Describe the emergency..."
+                    placeholder="Describe what happened and provide important details..."
                 ></textarea>
 
 
@@ -189,7 +234,9 @@
                     class="location-btn"
                     onclick="getLocation()">
 
-                    📍 Share My Location
+                    <span>📍</span>
+                    Share My Location
+                    <span class="location-arrow">↗</span>
 
                 </button>
 
@@ -204,8 +251,13 @@
                     onclick="submitIncident()">
 
                     🚨 Submit Emergency Report
+                    <span>→</span>
 
                 </button>
+
+                <p class="form-note">
+                    🔒 Your information is handled securely.
+                </p>
 
             </div>
 
@@ -213,14 +265,21 @@
 
 
         <!-- FEATURES -->
-
-        <section class="features">
+        <section id="features" class="features">
 
             <div class="section-heading">
 
-                <p>PLATFORM FEATURES</p>
+                <p>02 / PLATFORM CAPABILITIES</p>
 
-                <h2>One Platform. Faster Response.</h2>
+                <h2>
+                    Technology That
+                    <span>Makes A Difference.</span>
+                </h2>
+
+                <span>
+                    Intelligent tools designed to improve
+                    emergency coordination.
+                </span>
 
             </div>
 
@@ -228,8 +287,8 @@
             <div class="feature-grid">
 
                 <div class="feature-card">
-
-                    <div>📍</div>
+                    <div class="feature-icon">📍</div>
+                    <span class="feature-number">01</span>
 
                     <h3>Live Location</h3>
 
@@ -238,12 +297,13 @@
                         with responders.
                     </p>
 
+                    <span class="feature-line"></span>
                 </div>
 
 
                 <div class="feature-card">
-
-                    <div>🤖</div>
+                    <div class="feature-icon">🤖</div>
+                    <span class="feature-number">02</span>
 
                     <h3>AI Analysis</h3>
 
@@ -252,12 +312,13 @@
                         determine priority.
                     </p>
 
+                    <span class="feature-line"></span>
                 </div>
 
 
                 <div class="feature-card">
-
-                    <div>🚑</div>
+                    <div class="feature-icon">🚑</div>
+                    <span class="feature-number">03</span>
 
                     <h3>Smart Dispatch</h3>
 
@@ -266,12 +327,13 @@
                         available responders.
                     </p>
 
+                    <span class="feature-line"></span>
                 </div>
 
 
                 <div class="feature-card">
-
-                    <div>📊</div>
+                    <div class="feature-icon">📊</div>
+                    <span class="feature-number">04</span>
 
                     <h3>Command Center</h3>
 
@@ -280,6 +342,7 @@
                         from one dashboard.
                     </p>
 
+                    <span class="feature-line"></span>
                 </div>
 
             </div>
@@ -288,79 +351,104 @@
 
 
         <!-- ABOUT -->
-
         <section id="about" class="about">
 
-            <h2>About Smart Response</h2>
+            <div class="about-content">
 
-            <p>
-                Smart Response is an intelligent emergency
-                management platform designed to improve
-                communication between citizens, responders
-                and emergency control centers.
-            </p>
+                <p class="about-label">03 / OUR MISSION</p>
+
+                <h2>
+                    Technology With A
+                    <span>Purpose.</span>
+                </h2>
+
+                <p>
+                    Smart Response is an intelligent emergency
+                    management platform designed to improve
+                    communication between citizens, responders
+                    and emergency control centers.
+                </p>
+
+                <div class="about-bottom">
+                    <span>SMARTER COORDINATION</span>
+                    <span>FASTER RESPONSE</span>
+                    <span>BETTER OUTCOMES</span>
+                </div>
+
+            </div>
 
         </section>
 
     </main>
 
 
-    
-
-    </div>
-
-
+    <!-- FOOTER -->
     <footer>
 
+        <div class="footer-brand">
+            🚨 SMART RESPONSE
+        </div>
+
         <p>
-            © 2026 Smart Emergency Response
+            © 2026 Smart Emergency Response.
+            Built for a safer tomorrow.
         </p>
+
+        <a href="#home">Back to top ↑</a>
 
     </footer>
 
 
-    <script type="module" src="app.js"></script>
+    <!-- LOGIN MODAL -->
+    <div id="loginModal" class="modal">
 
-<!-- LOGIN MODAL -->
+        <div class="modal-content">
 
-<div id="loginModal" class="modal">
+            <span
+                class="close"
+                onclick="closeLogin()">
+                &times;
+            </span>
 
-    <div class="modal-content">
+            <div class="modal-logo">🚨</div>
 
-        <span
-            class="close"
-            onclick="closeLogin()">
-            &times;
-        </span>
+            <p class="modal-label">SECURE ACCESS</p>
 
-        <h2>Login</h2>
+            <h2>Welcome Back</h2>
 
-        <p>
-            New user?
-            <button type="button" onclick="registerUser()">
-                Register
+            <p class="modal-description">
+                Login to Smart Emergency Response
+            </p>
+
+            <p class="register-text">
+                New user?
+                <button type="button" onclick="registerUser()">
+                    Register
+                </button>
+            </p>
+
+            <input
+                type="email"
+                id="email"
+                placeholder="Email">
+
+            <input
+                type="password"
+                id="password"
+                placeholder="Password">
+
+            <button type="button" onclick="loginUser()">
+                Login to Account →
             </button>
-        </p>
 
-        <input
-            type="email"
-            id="email"
-            placeholder="Email">
+            <p id="loginMessage"></p>
 
-        <input
-            type="password"
-            id="password"
-            placeholder="Password">
-
-        <button type="button" onclick="loginUser()">
-            Login
-        </button>
-
-        <p id="loginMessage"></p>
+        </div>
 
     </div>
 
-</div>
+
+    <script type="module" src="app.js"></script>
 
 </body>
 </html>
