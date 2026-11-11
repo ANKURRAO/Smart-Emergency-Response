@@ -1,14 +1,22 @@
+
 {
   "rules": {
     ".read": false,
     ".write": false,
 
     "users": {
+      ".read": "auth != null && root.child('users').child(auth.uid).child('role').val() === 'admin'",
+
       "$uid": {
         ".read": "auth != null && (auth.uid === $uid || root.child('users').child(auth.uid).child('role').val() === 'admin')",
-        ".write": "auth != null && (auth.uid === $uid || root.child('users').child(auth.uid).child('role').val() === 'admin')",
 
-        ".validate": "newData.hasChildren(['email', 'role', 'createdAt'])",
+        ".write": "auth != null && auth.uid === $uid && !data.exists() && newData.exists() && newData.child('uid').val() === auth.uid && newData.child('email').val() === auth.token.email && newData.child('role').val() === 'citizen' && newData.child('available').val() === false && newData.child('createdAt').isNumber()",
+
+        ".validate": "newData.hasChildren(['uid', 'email', 'role', 'createdAt'])",
+
+        "uid": {
+          ".validate": "newData.isString() && newData.val() === $uid"
+        },
 
         "email": {
           ".validate": "newData.isString()"
@@ -20,15 +28,66 @@
 
         "createdAt": {
           ".validate": "newData.isNumber()"
+        },
+
+        "name": {
+          ".write": "auth != null && auth.uid === $uid",
+          ".validate": "newData.isString()"
+        },
+
+        "phone": {
+          ".write": "auth != null && auth.uid === $uid",
+          ".validate": "newData.isString()"
+        },
+
+        "address": {
+          ".write": "auth != null && auth.uid === $uid",
+          ".validate": "newData.isString()"
+        },
+
+        "city": {
+          ".write": "auth != null && auth.uid === $uid",
+          ".validate": "newData.isString()"
+        },
+
+        "state": {
+          ".write": "auth != null && auth.uid === $uid",
+          ".validate": "newData.isString()"
+        },
+
+        "emergencyContact": {
+          ".write": "auth != null && auth.uid === $uid"
+        },
+
+        "profilePhoto": {
+          ".write": "auth != null && auth.uid === $uid",
+          ".validate": "newData.isString()"
+        },
+
+        "updatedAt": {
+          ".write": "auth != null && auth.uid === $uid",
+          ".validate": "newData.isNumber()"
+        },
+
+        "latitude": {
+          ".write": "auth != null && auth.uid === $uid && root.child('users').child(auth.uid).child('role').val() === 'responder'",
+          ".validate": "newData.isNumber() && newData.val() >= -90 && newData.val() <= 90"
+        },
+
+        "longitude": {
+          ".write": "auth != null && auth.uid === $uid && root.child('users').child(auth.uid).child('role').val() === 'responder'",
+          ".validate": "newData.isNumber() && newData.val() >= -180 && newData.val() <= 180"
         }
       }
     },
 
     "incidents": {
-      "$incidentId": {
-        ".read": "auth != null",
+      ".read": "auth != null && root.child('users').child(auth.uid).child('role').val() === 'admin'",
 
-        ".write": "auth != null && (root.child('users').child(auth.uid).child('role').val() === 'admin' || (newData.exists() && newData.child('citizenId').val() === auth.uid) || (data.exists() && data.child('citizenId').val() === auth.uid) || (data.exists() && data.child('responderId').val() === auth.uid))",
+      "$incidentId": {
+        ".read": "auth != null && (root.child('users').child(auth.uid).child('role').val() === 'admin' || data.child('citizenId').val() === auth.uid || data.child('responderId').val() === auth.uid)",
+
+        ".write": "auth != null && !data.exists() && newData.exists() && root.child('users').child(auth.uid).child('role').val() === 'citizen' && newData.child('citizenId').val() === auth.uid && newData.child('status').val() === 'reported' && !newData.child('responderId').exists()",
 
         ".validate": "newData.hasChildren(['citizenId', 'category', 'description', 'severity', 'status', 'createdAt'])",
 
@@ -59,10 +118,12 @@
     },
 
     "responders": {
-      "$responderId": {
-        ".read": "auth != null",
+      ".read": "auth != null && root.child('users').child(auth.uid).child('role').val() === 'admin'",
 
-        ".write": "auth != null && (auth.uid === $responderId || root.child('users').child(auth.uid).child('role').val() === 'admin')",
+      "$responderId": {
+        ".read": "auth != null && (root.child('users').child(auth.uid).child('role').val() === 'admin' || (auth.uid === $responderId && root.child('users').child(auth.uid).child('role').val() === 'responder'))",
+
+        ".write": false,
 
         ".validate": "newData.hasChildren(['userId', 'name', 'availability'])",
 
@@ -75,15 +136,18 @@
         },
 
         "availability": {
+          ".write": "auth != null && auth.uid === $responderId && root.child('users').child(auth.uid).child('role').val() === 'responder'",
           ".validate": "newData.val() === 'available' || newData.val() === 'busy' || newData.val() === 'offline'"
         },
 
         "location": {
           "latitude": {
+            ".write": "auth != null && auth.uid === $responderId && root.child('users').child(auth.uid).child('role').val() === 'responder'",
             ".validate": "newData.isNumber() && newData.val() >= -90 && newData.val() <= 90"
           },
 
           "longitude": {
+            ".write": "auth != null && auth.uid === $responderId && root.child('users').child(auth.uid).child('role').val() === 'responder'",
             ".validate": "newData.isNumber() && newData.val() >= -180 && newData.val() <= 180"
           }
         }
@@ -95,7 +159,7 @@
         ".read": "auth != null && (auth.uid === $uid || root.child('users').child(auth.uid).child('role').val() === 'admin')",
 
         "$notificationId": {
-          ".write": "auth != null && (auth.uid === $uid || root.child('users').child(auth.uid).child('role').val() === 'admin')",
+          ".write": false,
 
           ".validate": "newData.hasChildren(['title', 'message', 'createdAt', 'read'])",
 
@@ -112,6 +176,7 @@
           },
 
           "read": {
+            ".write": "auth != null && auth.uid === $uid && data.exists() && newData.isBoolean()",
             ".validate": "newData.isBoolean()"
           }
         }

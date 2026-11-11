@@ -1,3 +1,4 @@
+
 // ============================================================
 // SMART EMERGENCY RESPONSE
 // Main Frontend JavaScript
@@ -113,6 +114,7 @@ async function loginUser() {
         }
 
         const profile = profileSnapshot.val();
+
         const role = String(profile.role || "")
             .toLowerCase()
             .trim();
@@ -165,9 +167,6 @@ async function loginUser() {
         } else if (error.code === "auth/too-many-requests") {
             errorMessage = "Too many attempts. Please try again later.";
 
-        } else if (error.code === "auth/network-request-failed") {
-            errorMessage = "Network error. Check your internet connection.";
-
         } else if (
             error.code === "PERMISSION_DENIED" ||
             error.code === "permission-denied" ||
@@ -195,6 +194,7 @@ async function loginUser() {
 
 // ============================================================
 // FIREBASE REGISTRATION
+// PUBLIC REGISTRATION: CITIZEN ONLY
 // ============================================================
 
 async function registerUser() {
@@ -237,12 +237,30 @@ async function registerUser() {
         console.log("Account created:", createdUser.email);
         console.log("New user UID:", createdUser.uid);
 
-        // Step 2: Save the profile in Realtime Database
-        await set(ref(db, "users/" + createdUser.uid), {
-            email: email,
+        // Step 2: Create a consistent Citizen profile
+        // Public registration cannot create responder/admin accounts.
+
+        const timestamp = Date.now();
+
+        const userData = {
+            uid: createdUser.uid,
+            name: createdUser.displayName || "",
+            email: createdUser.email,
             role: "citizen",
-            createdAt: new Date().toISOString()
-        });
+            phone: "",
+            department: "",
+            vehicle: "",
+            available: false,
+            latitude: null,
+            longitude: null,
+            createdAt: timestamp,
+            updatedAt: timestamp
+        };
+
+        await set(
+            ref(db, "users/" + createdUser.uid),
+            userData
+        );
 
         // Step 3: Redirect to Citizen Dashboard
         showLoginMessage("Account created. Opening Citizen Dashboard...");
@@ -372,6 +390,7 @@ function getLocation() {
             status.textContent =
                 "Geolocation is not supported by this browser.";
         }
+
         return;
     }
 

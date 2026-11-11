@@ -1,5 +1,3 @@
-
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -58,9 +56,7 @@
             font-weight: bold;
         }
 
-        input,
-        select,
-        textarea {
+        input, select, textarea {
             width: 100%;
             padding: 13px;
             border: 1px solid #cbd5e1;
@@ -131,6 +127,7 @@
             color: #475569;
             margin-top: 8px;
             line-height: 1.6;
+            white-space: pre-line;
         }
 
         @media (max-width: 600px) {
@@ -175,6 +172,7 @@
         <form id="incidentForm">
 
             <label for="type">Emergency Type *</label>
+
             <select id="type" required>
                 <option value="">Select emergency type</option>
                 <option value="Medical">🏥 Medical Emergency</option>
@@ -187,6 +185,7 @@
             </select>
 
             <label for="severity">Severity *</label>
+
             <select id="severity" required>
                 <option value="">Select severity</option>
                 <option value="Low">Low</option>
@@ -196,6 +195,7 @@
             </select>
 
             <label for="description">Emergency Description *</label>
+
             <textarea
                 id="description"
                 maxlength="1000"
@@ -207,6 +207,7 @@
             <label>Emergency Location *</label>
 
             <div class="location-box">
+
                 <button
                     type="button"
                     class="location-btn"
@@ -217,9 +218,11 @@
                 <div id="locationStatus" class="coordinates">
                     Location not selected.
                 </div>
+
             </div>
 
             <label for="landmark">Nearby Landmark / Address</label>
+
             <input
                 id="landmark"
                 type="text"
@@ -241,273 +244,360 @@
 </main>
 
 <script type="module">
-    import { auth, db } from "../firebase-config.js";
 
-    import {
-        onAuthStateChanged
-    } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-auth.js";
+import { auth, db } from "../firebase-config.js";
 
-    import {
-        ref,
-        get
-    } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-database.js";
+import {
+    onAuthStateChanged
+} from "https://www.gstatic.com/firebasejs/12.0.0/firebase-auth.js";
 
-    // =========================================
-    // CONFIGURATION
-    // =========================================
+import {
+    ref,
+    get
+} from "https://www.gstatic.com/firebasejs/12.0.0/firebase-database.js";
 
-    const API_URL = "http://localhost:5000/api/incidents";
 
-    let currentUser = null;
-    let userLocation = null;
-    let authReady = false;
-    let isSubmitting = false;
+// =================================================
+// CONFIGURATION
+// =================================================
 
-    const form = document.getElementById("incidentForm");
-    const message = document.getElementById("message");
-    const submitBtn = document.getElementById("submitBtn");
-    const locationBtn = document.getElementById("locationBtn");
-    const locationStatus = document.getElementById("locationStatus");
+// Local development backend URL.
+// Change this when deploying the backend.
+const API_URL = "http://localhost:5000/api/incidents";
 
-    // =========================================
-    // MESSAGE HELPER
-    // =========================================
+let currentUser = null;
+let userLocation = null;
+let authReady = false;
+let isSubmitting = false;
 
-    function showMessage(text, color = "red") {
-        message.textContent = text;
-        message.style.color = color;
+const form = document.getElementById("incidentForm");
+const message = document.getElementById("message");
+const submitBtn = document.getElementById("submitBtn");
+const locationBtn = document.getElementById("locationBtn");
+const locationStatus = document.getElementById("locationStatus");
+
+
+// =================================================
+// MESSAGE HELPER
+// =================================================
+
+function showMessage(text, color = "red") {
+    message.textContent = text;
+    message.style.color = color;
+}
+
+
+// =================================================
+// AUTHENTICATION AND CITIZEN ROLE
+// =================================================
+
+onAuthStateChanged(auth, async (user) => {
+
+    authReady = false;
+    currentUser = null;
+
+    if (!user) {
+        location.href = "../index.html";
+        return;
     }
 
-    // =========================================
-    // AUTHENTICATION AND CITIZEN ROLE
-    // =========================================
+    try {
 
-    onAuthStateChanged(auth, async (user) => {
-        authReady = true;
-        currentUser = null;
-
-        if (!user) {
-            location.href = "../index.html";
-            return;
-        }
-
-        try {
-            const snapshot = await get(ref(db, "users/" + user.uid));
-
-            if (!snapshot.exists()) {
-                showMessage("Citizen profile not found. Please contact the administrator.");
-                return;
-            }
-
-            const profile = snapshot.val();
-
-            if (profile.role !== "citizen") {
-                showMessage("Citizen access required.");
-                return;
-            }
-
-            currentUser = user;
-        } catch (error) {
-            console.error("Profile verification failed:", error);
-            showMessage(
-                "Unable to verify your profile. Please refresh and try again."
-            );
-        }
-    });
-
-    // =========================================
-    // GET CURRENT LOCATION
-    // =========================================
-
-    locationBtn.addEventListener("click", () => {
-        if (!navigator.geolocation) {
-            locationStatus.textContent =
-                "Your browser does not support location services.";
-            return;
-        }
-
-        locationBtn.disabled = true;
-        locationStatus.textContent = "Getting your location...";
-
-        navigator.geolocation.getCurrentPosition(
-            (position) => {
-                userLocation = {
-                    latitude: position.coords.latitude,
-                    longitude: position.coords.longitude
-                };
-
-                locationStatus.textContent =
-                    "✅ Location captured\n" +
-                    "Latitude: " + userLocation.latitude.toFixed(6) + "\n" +
-                    "Longitude: " + userLocation.longitude.toFixed(6);
-
-                locationStatus.style.whiteSpace = "pre-line";
-                locationBtn.disabled = false;
-            },
-            (error) => {
-                console.error("Geolocation failed:", error);
-
-                userLocation = null;
-
-                if (error.code === error.PERMISSION_DENIED) {
-                    locationStatus.textContent =
-                        "Location permission denied. Allow location access and try again.";
-                } else if (error.code === error.TIMEOUT) {
-                    locationStatus.textContent =
-                        "Location request timed out. Please try again.";
-                } else {
-                    locationStatus.textContent =
-                        "Unable to get location. Please try again.";
-                }
-
-                locationBtn.disabled = false;
-            },
-            {
-                enableHighAccuracy: true,
-                timeout: 15000,
-                maximumAge: 0
-            }
+        const snapshot = await get(
+            ref(db, "users/" + user.uid)
         );
-    });
 
-    // =========================================
-    // SUBMIT EMERGENCY THROUGH BACKEND API
-    // =========================================
-
-    form.addEventListener("submit", async (event) => {
-        event.preventDefault();
-
-        if (isSubmitting) {
+        if (!snapshot.exists()) {
+            showMessage(
+                "Citizen profile not found. Please contact the administrator."
+            );
             return;
         }
 
-        if (!authReady) {
-            showMessage("Please wait while your login is verified.");
+        const profile = snapshot.val();
+
+        if (profile.role !== "citizen") {
+            showMessage("Citizen access required.");
             return;
         }
 
-        if (!currentUser) {
-            showMessage("Please log in with a citizen account first.");
-            return;
-        }
+        currentUser = user;
+        authReady = true;
 
-        if (!userLocation) {
-            showMessage("❌ Please capture your emergency location.");
-            return;
-        }
+    } catch (error) {
 
-        const type = document.getElementById("type").value;
-        const severity = document.getElementById("severity").value;
-        const description = document.getElementById("description").value.trim();
-        const landmark = document.getElementById("landmark").value.trim();
+        console.error("Profile verification failed:", error);
 
-        if (!type || !severity || !description) {
-            showMessage("Please fill in all required fields.");
-            return;
-        }
+        showMessage(
+            "Unable to verify your profile. Please refresh and try again."
+        );
 
-        if (description.length > 1000) {
-            showMessage("Description must be 1000 characters or fewer.");
-            return;
-        }
+    }
 
-        isSubmitting = true;
-        submitBtn.disabled = true;
-        locationBtn.disabled = true;
-        submitBtn.textContent = "Submitting...";
-        showMessage("Sending your emergency report...", "#1d4ed8");
+});
 
-        try {
-            // Get a fresh Firebase ID token for backend authentication.
-            const token = await currentUser.getIdToken();
 
-            const incidentData = {
-                type: type,
-                category: type,
-                severity: severity,
-                description: description,
-                landmark: landmark,
-                latitude: userLocation.latitude,
-                longitude: userLocation.longitude
+// =================================================
+// GET CURRENT LOCATION
+// =================================================
+
+locationBtn.addEventListener("click", () => {
+
+    if (!navigator.geolocation) {
+
+        locationStatus.textContent =
+            "Your browser does not support location services.";
+
+        return;
+    }
+
+    locationBtn.disabled = true;
+    locationStatus.textContent = "Getting your location...";
+
+    userLocation = null;
+
+    navigator.geolocation.getCurrentPosition(
+
+        (position) => {
+
+            userLocation = {
+                latitude: position.coords.latitude,
+                longitude: position.coords.longitude,
+                accuracy: position.coords.accuracy
             };
 
-            // Do not write incidents directly from the browser to Firebase.
-            const response = await fetch(API_URL, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    "Authorization": `Bearer ${token}`
-                },
-                body: JSON.stringify(incidentData)
-            });
+            locationStatus.textContent =
+                "✅ Location captured\n" +
+                "Latitude: " + userLocation.latitude.toFixed(6) + "\n" +
+                "Longitude: " + userLocation.longitude.toFixed(6) + "\n" +
+                "Accuracy: " + Math.round(userLocation.accuracy) + " metres";
 
-            const result = await response.json().catch(() => ({}));
+            locationBtn.disabled = false;
 
-            if (!response.ok || result.success !== true) {
-                if (response.status === 401) {
-                    throw new Error(
-                        "Login verification failed. Please log in again."
-                    );
-                }
+        },
 
-                if (response.status === 403) {
-                    throw new Error(
-                        "Access denied. Check your citizen role and backend permissions."
-                    );
-                }
+        (error) => {
 
+            console.error("Geolocation failed:", error);
+
+            userLocation = null;
+
+            if (error.code === error.PERMISSION_DENIED) {
+
+                locationStatus.textContent =
+                    "Location permission denied. Allow location access and try again.";
+
+            } else if (error.code === error.TIMEOUT) {
+
+                locationStatus.textContent =
+                    "Location request timed out. Please try again.";
+
+            } else {
+
+                locationStatus.textContent =
+                    "Unable to get location. Please try again.";
+
+            }
+
+            locationBtn.disabled = false;
+
+        },
+
+        {
+            enableHighAccuracy: true,
+            timeout: 15000,
+            maximumAge: 0
+        }
+
+    );
+
+});
+
+
+// =================================================
+// SUBMIT EMERGENCY THROUGH BACKEND API
+// =================================================
+
+form.addEventListener("submit", async (event) => {
+
+    event.preventDefault();
+
+    if (isSubmitting) {
+        return;
+    }
+
+    if (!authReady || !currentUser) {
+        showMessage("Please wait while your login is verified.");
+        return;
+    }
+
+    if (!userLocation) {
+        showMessage("❌ Please capture your emergency location.");
+        return;
+    }
+
+    const type =
+        document.getElementById("type").value;
+
+    const severity =
+        document.getElementById("severity").value.toLowerCase();
+
+    const description =
+        document.getElementById("description").value.trim();
+
+    const landmark =
+        document.getElementById("landmark").value.trim();
+
+    if (!type || !severity || !description) {
+        showMessage("Please fill in all required fields.");
+        return;
+    }
+
+    if (description.length > 1000) {
+        showMessage("Description must be 1000 characters or fewer.");
+        return;
+    }
+
+    isSubmitting = true;
+    submitBtn.disabled = true;
+    locationBtn.disabled = true;
+
+    submitBtn.textContent = "Submitting...";
+
+    showMessage(
+        "Sending your emergency report...",
+        "#1d4ed8"
+    );
+
+    try {
+
+        // Get Firebase authentication token.
+        const token = await currentUser.getIdToken(true);
+
+        const incidentData = {
+
+            type: type,
+            category: type,
+            severity: severity,
+            description: description,
+            landmark: landmark,
+
+            latitude: userLocation.latitude,
+            longitude: userLocation.longitude,
+            locationAccuracy: userLocation.accuracy
+
+        };
+
+        // Incident is created through the authenticated backend.
+        // Do not write incidents directly from browser to Firebase.
+
+        const response = await fetch(API_URL, {
+
+            method: "POST",
+
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${token}`
+            },
+
+            body: JSON.stringify(incidentData)
+
+        });
+
+        const result = await response.json().catch(() => ({}));
+
+        if (!response.ok || result.success !== true) {
+
+            if (response.status === 401) {
                 throw new Error(
-                    result.message ||
-                    `Server returned HTTP ${response.status}.`
+                    "Login verification failed. Please log in again."
                 );
             }
 
-            const incident = result.incident || {};
-            const incidentId =
-                incident.incidentId || incident.id || incident.key;
-
-            showMessage(
-                "✅ Emergency reported successfully.",
-                "green"
-            );
-
-            // Reset the form only after the backend confirms success.
-            form.reset();
-            userLocation = null;
-            locationStatus.textContent = "Location not selected.";
-
-            setTimeout(() => {
-                if (incidentId) {
-                    location.href =
-                        "tracking.html?id=" +
-                        encodeURIComponent(incidentId);
-                } else {
-                    location.href = "incidents.html";
-                }
-            }, 1200);
-
-        } catch (error) {
-            console.error("Incident submission failed:", error);
-
-            let errorMessage = error.message ||
-                "An unexpected error occurred.";
-
-            if (
-                error instanceof TypeError &&
-                error.message.toLowerCase().includes("fetch")
-            ) {
-                errorMessage =
-                    "Cannot connect to the backend. Make sure npm start is running on port 5000.";
+            if (response.status === 403) {
+                throw new Error(
+                    "Access denied. Check your citizen role and backend permissions."
+                );
             }
 
-            showMessage("❌ Failed to submit report: " + errorMessage);
-        } finally {
-            isSubmitting = false;
-            submitBtn.disabled = false;
-            locationBtn.disabled = false;
-            submitBtn.textContent = "🚨 Submit Emergency Report";
+            throw new Error(
+                result.message ||
+                `Server returned HTTP ${response.status}.`
+            );
+
         }
-    });
+
+        const incident = result.incident || {};
+
+        const incidentId =
+            incident.incidentId ||
+            incident.id ||
+            incident.key;
+
+        showMessage(
+            "✅ Emergency reported successfully.",
+            "green"
+        );
+
+        // Reset form after successful backend response.
+        form.reset();
+
+        userLocation = null;
+
+        locationStatus.textContent =
+            "Location not selected.";
+
+        setTimeout(() => {
+
+            if (incidentId) {
+
+                location.href =
+                    "tracking.html?id=" +
+                    encodeURIComponent(incidentId);
+
+            } else {
+
+                location.href = "incidents.html";
+
+            }
+
+        }, 1200);
+
+    } catch (error) {
+
+        console.error("Incident submission failed:", error);
+
+        let errorMessage =
+            error.message || "An unexpected error occurred.";
+
+        if (
+            error instanceof TypeError &&
+            error.message.toLowerCase().includes("fetch")
+        ) {
+
+            errorMessage =
+                "Cannot connect to the backend. Make sure npm start is running on port 5000.";
+
+        }
+
+        showMessage(
+            "❌ Failed to submit report: " + errorMessage
+        );
+
+    } finally {
+
+        isSubmitting = false;
+
+        submitBtn.disabled = false;
+        locationBtn.disabled = false;
+
+        submitBtn.textContent =
+            "🚨 Submit Emergency Report";
+
+    }
+
+});
+
 </script>
 
 </body>

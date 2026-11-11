@@ -1,3 +1,4 @@
+
 // ============================================================
 // SMART EMERGENCY RESPONSE
 // Incident Routes
@@ -21,7 +22,7 @@ const roleCheck = require("../middleware/roleCheck");
 
 // ------------------------------------------------------------
 // Create Emergency Incident
-// Citizen can create an incident
+// Citizen only
 // ------------------------------------------------------------
 
 router.post(
@@ -45,6 +46,8 @@ router.get(
 
 // ------------------------------------------------------------
 // Get Single Incident
+// Authenticated users
+// Ownership checked in controller
 // ------------------------------------------------------------
 
 router.get(
@@ -55,21 +58,26 @@ router.get(
 
 // ------------------------------------------------------------
 // Update Incident
+// Citizen (own incident) / Admin
 // ------------------------------------------------------------
 
 router.put(
     "/:id",
     auth,
+    roleCheck(["citizen", "admin"]),
     updateIncident
 );
 
 // ------------------------------------------------------------
 // Update Incident Status
+// Admin / Responder
+// Controller checks responder assignment
 // ------------------------------------------------------------
 
 router.patch(
     "/:id/status",
     auth,
+    roleCheck(["admin", "responder"]),
     updateIncidentStatus
 );
 
@@ -86,12 +94,14 @@ router.patch(
 );
 
 // ------------------------------------------------------------
-// Delete / Cancel Incident
+// Delete Incident
+// Admin only
 // ------------------------------------------------------------
 
 router.delete(
     "/:id",
     auth,
+    roleCheck("admin"),
     deleteIncident
 );
 

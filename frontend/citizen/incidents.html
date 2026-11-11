@@ -1,9 +1,10 @@
+
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
     <title>My Incidents | Smart Emergency Response</title>
 
     <style>
@@ -100,44 +101,36 @@
             text-align: center;
             border-radius: 14px;
         }
+
+        .error {
+            color: #b91c1c;
+            background: #fee2e2;
+            padding: 18px;
+            border-radius: 10px;
+        }
     </style>
 </head>
 
 <body>
 
 <header>
-
     <strong>🚨 Smart Emergency Response</strong>
 
-    <button class="back"
-            onclick="location.href='dashboard.html'">
+    <button class="back" onclick="location.href='dashboard.html'">
         Dashboard
     </button>
-
 </header>
 
-
 <main>
-
     <section class="top">
-
         <h1>My Emergency Reports</h1>
-
-        <p>
-            View and track all emergencies reported from your account.
-        </p>
-
+        <p>View and track all emergencies reported from your account.</p>
     </section>
-
 
     <section id="incidentList">
-
         Loading incidents...
-
     </section>
-
 </main>
-
 
 <script type="module">
 
@@ -156,63 +149,68 @@ import {
 } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-database.js";
 
 
-let currentUser = null;
-
-
-/* ================= AUTH ================= */
+// =================================================
+// AUTHENTICATION
+// =================================================
 
 onAuthStateChanged(auth, async (user) => {
 
     if (!user) {
-
         location.href = "../index.html";
         return;
-
     }
 
-    currentUser = user;
-
-    loadIncidents();
+    await loadIncidents(user);
 
 });
 
 
-/* ================= LOAD ================= */
+// =================================================
+// LOAD CITIZEN INCIDENTS
+// =================================================
 
-async function loadIncidents() {
+async function loadIncidents(currentUser) {
 
-    const container =
-        document.getElementById("incidentList");
+    const container = document.getElementById("incidentList");
+
+    container.textContent = "Loading incidents...";
 
     try {
 
         const incidentsQuery = query(
             ref(db, "incidents"),
-            orderByChild("userId"),
+            orderByChild("citizenId"),
             equalTo(currentUser.uid)
         );
 
-        const snapshot =
-            await get(incidentsQuery);
+        const snapshot = await get(incidentsQuery);
 
         if (!snapshot.exists()) {
 
             container.innerHTML = `
                 <div class="empty">
                     <h2>No emergency reports</h2>
-                    <p>You have not reported any emergency yet.</p>
+
+                    <p>
+                        You have not reported any emergency yet.
+                    </p>
+
                     <br>
-                    <button class="track"
-                        onclick="location.href='report.html'">
+
+                    <button class="track" id="reportButton">
                         Report Emergency
                     </button>
                 </div>
             `;
 
+            document
+                .getElementById("reportButton")
+                .addEventListener("click", () => {
+                    location.href = "report.html";
+                });
+
             return;
-
         }
-
 
         const incidents = [];
 
@@ -225,71 +223,66 @@ async function loadIncidents() {
 
         });
 
-
-        incidents.sort(
-            (a,b) =>
-                new Date(b.createdAt || 0) -
-                new Date(a.createdAt || 0)
-        );
-
+        // Sort newest incidents first.
+        incidents.sort((a, b) => {
+            return getTimestamp(b.createdAt) -
+                   getTimestamp(a.createdAt);
+        });
 
         container.innerHTML = "";
 
-
         incidents.forEach(incident => {
 
-            const article =
-                document.createElement("article");
+            const article = document.createElement("article");
 
             article.className = "incident";
 
+            const severity = String(
+                incident.severity || "unknown"
+            ).toLowerCase();
 
             const severityClass =
-                incident.severity === "Critical"
-                    ? "critical"
-                    : "";
+                severity === "critical" ? "critical" : "";
 
+            const status = String(
+                incident.status || "reported"
+            )
+                .replaceAll("_", " ")
+                .replaceAll("-", " ");
 
             article.innerHTML = `
 
                 <div class="incident-header">
 
                     <div>
-
                         <h2>
                             ${escapeHTML(
-                                incident.type || "Emergency"
+                                incident.category ||
+                                incident.type ||
+                                "Emergency"
                             )}
                         </h2>
 
                         <small>
-                            ID: ${escapeHTML(incident.id)}
+                            ID: ${escapeHTML(incident.incidentId || incident.id)}
                         </small>
-
                     </div>
 
                     <span class="status ${severityClass}">
-                        ${escapeHTML(
-                            incident.status || "Reported"
-                        )}
+                        ${escapeHTML(status)}
                     </span>
 
                 </div>
 
-
                 <div class="details">
 
                     <strong>Severity:</strong>
-                    ${escapeHTML(
-                        incident.severity || "Unknown"
-                    )}
+                    ${escapeHTML(incident.severity || "Unknown")}
 
                     <br>
 
                     <strong>Description:</strong>
-                    ${escapeHTML(
-                        incident.description || "N/A"
-                    )}
+                    ${escapeHTML(incident.description || "N/A")}
 
                     <br>
 
@@ -306,54 +299,82 @@ async function loadIncidents() {
 
                 </div>
 
-
                 <br>
-
-                <button
-                    class="track"
-                    onclick="
-                        location.href=
-                        'tracking.html?id=${encodeURIComponent(incident.id)}'
-                    ">
-
-                    📍 Track Incident
-
-                </button>
-
             `;
 
+            const trackButton = document.createElement("button");
 
+            trackButton.className = "track";
+            trackButton.textContent = "📍 Track Incident";
+
+            trackButton.addEventListener("click", () => {
+
+                location.href =
+                    "tracking.html?id=" +
+                    encodeURIComponent(incident.id);
+
+            });
+
+            article.appendChild(trackButton);
             container.appendChild(article);
 
         });
 
-
     } catch (error) {
 
-        console.error(error);
+        console.error("Incident loading error:", error);
 
-        container.innerHTML =
-            "<p>Unable to load incidents.</p>";
+        container.innerHTML = `
+            <div class="error">
+                <strong>Unable to load incidents.</strong>
+                <p>${escapeHTML(error.message)}</p>
+                <p>Please check Firebase Database permissions and indexing.</p>
+            </div>
+        `;
 
     }
 
 }
 
 
-/* ================= HELPERS ================= */
+// =================================================
+// TIMESTAMP HELPER
+// =================================================
 
-function formatDate(value) {
+function getTimestamp(value) {
 
-    if (!value) return "Unknown";
+    if (!value) {
+        return 0;
+    }
 
-    const date = new Date(value);
+    // Supports both numeric and ISO date timestamps.
+    const timestamp = new Date(value).getTime();
 
-    if (isNaN(date)) return "Unknown";
-
-    return date.toLocaleString();
+    return Number.isNaN(timestamp) ? 0 : timestamp;
 
 }
 
+
+// =================================================
+// FORMAT DATE
+// =================================================
+
+function formatDate(value) {
+
+    const timestamp = getTimestamp(value);
+
+    if (!timestamp) {
+        return "Unknown";
+    }
+
+    return new Date(timestamp).toLocaleString();
+
+}
+
+
+// =================================================
+// HTML ESCAPE
+// =================================================
 
 function escapeHTML(value) {
 

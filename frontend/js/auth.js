@@ -1,12 +1,10 @@
+
 // =========================================================
 // SMART EMERGENCY RESPONSE
 // AUTHENTICATION MODULE
 // =========================================================
 
-import {
-    auth,
-    db
-} from "./firebase.js";
+import { auth, db } from "./firebase.js";
 
 import {
     signInWithEmailAndPassword,
@@ -29,8 +27,24 @@ import {
 
 const USER_PATH = "users";
 
+// Fields that users must never change through profile updates.
+const PROTECTED_FIELDS = [
+    "uid",
+    "role",
+    "approved",
+    "isAdmin",
+    "permissions",
+    "available",
+    "availability",
+    "responderId",
+    "currentIncidentId",
+    "createdAt",
+    "updatedAt"
+];
+
 // =========================================================
 // REGISTER USER
+// Public registration is restricted to citizens.
 // =========================================================
 
 async function registerUser({
@@ -42,10 +56,7 @@ async function registerUser({
     department = "",
     vehicle = ""
 }) {
-
     try {
-
-        // Basic validation
         if (!name || !email || !password) {
             throw new Error("Name, email and password are required.");
         }
@@ -56,18 +67,9 @@ async function registerUser({
             );
         }
 
-        // Only allowed roles
-        const allowedRoles = [
-            "citizen",
-            "responder",
-            "admin"
-        ];
+        // SECURITY: Public signup can only create citizens.
+        role = "citizen";
 
-        if (!allowedRoles.includes(role)) {
-            role = "citizen";
-        }
-
-        // Create Firebase Authentication account
         const userCredential =
             await createUserWithEmailAndPassword(
                 auth,
@@ -77,42 +79,25 @@ async function registerUser({
 
         const user = userCredential.user;
 
-        // Update Firebase Auth display name
         await updateProfile(user, {
             displayName: name
         });
 
-        // User database object
         const userData = {
-
             uid: user.uid,
-
             name: name,
-
             email: user.email,
-
-            role: role,
-
+            role: "citizen",
             phone: phone,
-
             department: department,
-
             vehicle: vehicle,
-
-            available: role === "responder"
-                ? true
-                : false,
-
+            available: false,
             latitude: null,
-
             longitude: null,
-
             createdAt: Date.now(),
-
             updatedAt: Date.now()
         };
 
-        // Save user profile
         await set(
             ref(db, `${USER_PATH}/${user.uid}`),
             userData
@@ -125,11 +110,7 @@ async function registerUser({
         };
 
     } catch (error) {
-
-        console.error(
-            "Registration error:",
-            error
-        );
+        console.error("Registration error:", error);
 
         return {
             success: false,
@@ -143,9 +124,7 @@ async function registerUser({
 // =========================================================
 
 async function loginUser(email, password) {
-
     try {
-
         if (!email || !password) {
             throw new Error(
                 "Email and password are required."
@@ -161,11 +140,9 @@ async function loginUser(email, password) {
 
         const user = userCredential.user;
 
-        // Get database profile
-        const snapshot =
-            await get(
-                ref(db, `${USER_PATH}/${user.uid}`)
-            );
+        const snapshot = await get(
+            ref(db, `${USER_PATH}/${user.uid}`)
+        );
 
         let profile = null;
 
@@ -180,11 +157,7 @@ async function loginUser(email, password) {
         };
 
     } catch (error) {
-
-        console.error(
-            "Login error:",
-            error
-        );
+        console.error("Login error:", error);
 
         return {
             success: false,
@@ -198,9 +171,7 @@ async function loginUser(email, password) {
 // =========================================================
 
 async function logoutUser() {
-
     try {
-
         await signOut(auth);
 
         return {
@@ -208,11 +179,7 @@ async function logoutUser() {
         };
 
     } catch (error) {
-
-        console.error(
-            "Logout error:",
-            error
-        );
+        console.error("Logout error:", error);
 
         return {
             success: false,
@@ -234,21 +201,17 @@ function getCurrentUser() {
 // =========================================================
 
 async function getUserProfile(uid = null) {
-
     try {
-
         const user = auth.currentUser;
-
         const userId = uid || user?.uid;
 
         if (!userId) {
             return null;
         }
 
-        const snapshot =
-            await get(
-                ref(db, `${USER_PATH}/${userId}`)
-            );
+        const snapshot = await get(
+            ref(db, `${USER_PATH}/${userId}`)
+        );
 
         if (!snapshot.exists()) {
             return null;
@@ -257,12 +220,7 @@ async function getUserProfile(uid = null) {
         return snapshot.val();
 
     } catch (error) {
-
-        console.error(
-            "Profile fetch error:",
-            error
-        );
-
+        console.error("Profile fetch error:", error);
         return null;
     }
 }
@@ -272,9 +230,7 @@ async function getUserProfile(uid = null) {
 // =========================================================
 
 async function getCurrentUserRole() {
-
-    const profile =
-        await getUserProfile();
+    const profile = await getUserProfile();
 
     return profile?.role || null;
 }
@@ -284,9 +240,7 @@ async function getCurrentUserRole() {
 // =========================================================
 
 async function hasRole(requiredRole) {
-
-    const role =
-        await getCurrentUserRole();
+    const role = await getCurrentUserRole();
 
     return role === requiredRole;
 }
@@ -296,9 +250,7 @@ async function hasRole(requiredRole) {
 // =========================================================
 
 async function hasAnyRole(roles = []) {
-
-    const role =
-        await getCurrentUserRole();
+    const role = await getCurrentUserRole();
 
     return roles.includes(role);
 }
@@ -308,13 +260,10 @@ async function hasAnyRole(roles = []) {
 // =========================================================
 
 function observeAuthState(callback) {
-
     return onAuthStateChanged(
         auth,
         async (user) => {
-
             if (!user) {
-
                 callback({
                     loggedIn: false,
                     user: null,
@@ -325,8 +274,7 @@ function observeAuthState(callback) {
                 return;
             }
 
-            const profile =
-                await getUserProfile(user.uid);
+            const profile = await getUserProfile(user.uid);
 
             callback({
                 loggedIn: true,
@@ -345,14 +293,10 @@ function observeAuthState(callback) {
 async function requireLogin(
     redirectPage = "../index.html"
 ) {
-
     const user = auth.currentUser;
 
     if (!user) {
-
-        window.location.href =
-            redirectPage;
-
+        window.location.href = redirectPage;
         return false;
     }
 
@@ -367,33 +311,17 @@ async function requireRole(
     requiredRole,
     redirectPage = "../index.html"
 ) {
-
     const user = auth.currentUser;
 
     if (!user) {
-
-        window.location.href =
-            redirectPage;
-
+        window.location.href = redirectPage;
         return false;
     }
 
-    const profile =
-        await getUserProfile(user.uid);
+    const profile = await getUserProfile(user.uid);
 
-    if (!profile) {
-
-        window.location.href =
-            redirectPage;
-
-        return false;
-    }
-
-    if (profile.role !== requiredRole) {
-
-        window.location.href =
-            redirectPage;
-
+    if (!profile || profile.role !== requiredRole) {
+        window.location.href = redirectPage;
         return false;
     }
 
@@ -404,42 +332,51 @@ async function requireRole(
 // UPDATE USER PROFILE
 // =========================================================
 
-async function updateUserProfile(
-    updates = {}
-) {
-
+async function updateUserProfile(updates = {}) {
     try {
-
-        const user =
-            auth.currentUser;
+        const user = auth.currentUser;
 
         if (!user) {
-            throw new Error(
-                "User is not logged in."
-            );
+            throw new Error("User is not logged in.");
         }
 
-        updates.updatedAt =
-            Date.now();
+        if (
+            !updates ||
+            typeof updates !== "object" ||
+            Array.isArray(updates)
+        ) {
+            throw new Error("Invalid profile update data.");
+        }
 
-        // Update Realtime Database
+        // Remove protected fields from user input.
+        const safeUpdates = {};
+
+        for (const [key, value] of Object.entries(updates)) {
+            if (
+                !PROTECTED_FIELDS.includes(key) &&
+                value !== undefined
+            ) {
+                safeUpdates[key] = value;
+            }
+        }
+
+        if (Object.keys(safeUpdates).length === 0) {
+            throw new Error("No valid profile fields to update.");
+        }
+
+        safeUpdates.updatedAt = Date.now();
+
+        // Update Realtime Database.
         await update(
-            ref(
-                db,
-                `${USER_PATH}/${user.uid}`
-            ),
-            updates
+            ref(db, `${USER_PATH}/${user.uid}`),
+            safeUpdates
         );
 
-        // Update Firebase Auth display name
-        if (updates.name) {
-
-            await updateProfile(
-                user,
-                {
-                    displayName: updates.name
-                }
-            );
+        // Update Firebase Auth display name.
+        if (safeUpdates.name) {
+            await updateProfile(user, {
+                displayName: safeUpdates.name
+            });
         }
 
         return {
@@ -447,11 +384,7 @@ async function updateUserProfile(
         };
 
     } catch (error) {
-
-        console.error(
-            "Profile update error:",
-            error
-        );
+        console.error("Profile update error:", error);
 
         return {
             success: false,
@@ -465,12 +398,9 @@ async function updateUserProfile(
 // =========================================================
 
 function getAuthErrorMessage(error) {
-
-    const code =
-        error?.code || "";
+    const code = error?.code || "";
 
     switch (code) {
-
         case "auth/email-already-in-use":
             return "This email is already registered.";
 
@@ -506,16 +436,13 @@ function getAuthErrorMessage(error) {
 // =========================================================
 
 async function redirectByRole() {
-
-    const role =
-        await getCurrentUserRole();
+    const role = await getCurrentUserRole();
 
     if (!role) {
         return false;
     }
 
     switch (role) {
-
         case "citizen":
             window.location.href =
                 "./citizen/dashboard.html";
@@ -532,11 +459,7 @@ async function redirectByRole() {
             break;
 
         default:
-            console.warn(
-                "Unknown user role:",
-                role
-            );
-
+            console.warn("Unknown user role:", role);
             return false;
     }
 
@@ -548,32 +471,18 @@ async function redirectByRole() {
 // =========================================================
 
 export {
-
     registerUser,
-
     loginUser,
-
     logoutUser,
-
     getCurrentUser,
-
     getUserProfile,
-
     getCurrentUserRole,
-
     hasRole,
-
     hasAnyRole,
-
     observeAuthState,
-
     requireLogin,
-
     requireRole,
-
     updateUserProfile,
-
     getAuthErrorMessage,
-
     redirectByRole
 };

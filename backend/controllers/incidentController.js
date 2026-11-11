@@ -203,6 +203,8 @@ async function createIncident(req, res, next) {
         const incident = {
             incidentId,
 
+            citizenId: userId,
+
             userId,
 
             userEmail:

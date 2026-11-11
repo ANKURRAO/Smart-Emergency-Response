@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -48,6 +49,7 @@
 
         .status-main h1 {
             color: #2563eb;
+            text-transform: capitalize;
         }
 
         .timeline {
@@ -92,6 +94,7 @@
             background: #eff6ff;
             padding: 18px;
             border-radius: 10px;
+            line-height: 1.8;
         }
 
         button {
@@ -116,6 +119,10 @@
         .error {
             color: #dc2626;
         }
+
+        .hidden {
+            display: none;
+        }
     </style>
 </head>
 
@@ -131,7 +138,6 @@
     </button>
 
 </header>
-
 
 <main>
 
@@ -149,21 +155,15 @@
 
     </section>
 
-
     <section class="box">
 
         <h2>Emergency Details</h2>
 
-        <div
-            id="incidentDetails"
-            class="details">
-
+        <div id="incidentDetails" class="details">
             Loading...
-
         </div>
 
     </section>
-
 
     <section class="box">
 
@@ -200,21 +200,15 @@
 
     </section>
 
-
     <section class="box">
 
         <h2>Responder Information</h2>
 
-        <div
-            id="responderInfo"
-            class="responder">
-
+        <div id="responderInfo" class="responder">
             No responder assigned yet.
-
         </div>
 
     </section>
-
 
     <section class="box">
 
@@ -224,18 +218,13 @@
             Loading location...
         </div>
 
-        <button
-            class="map-link"
-            id="mapButton">
-
+        <button class="map-link hidden" id="mapButton">
             🗺️ Open Location in Map
-
         </button>
 
     </section>
 
 </main>
-
 
 <script type="module">
 
@@ -251,30 +240,43 @@ import {
 } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-database.js";
 
 
+// =================================================
+// GLOBAL VARIABLES
+// =================================================
+
 let currentUser = null;
 let incidentId = null;
 let incidentData = null;
+let stopIncidentListener = null;
 
 
-/* ================= GET INCIDENT ID ================= */
+// =================================================
+// GET INCIDENT ID
+// =================================================
 
-const params =
-    new URLSearchParams(location.search);
+const params = new URLSearchParams(location.search);
 
-incidentId =
-    params.get("id");
+incidentId = params.get("id");
 
+const statusElement =
+    document.getElementById("currentStatus");
 
 if (!incidentId) {
 
-    document.getElementById("currentStatus")
-        .textContent =
-        "No incident selected.";
+    statusElement.textContent = "No incident selected.";
+
+} else if (/[.#$[\]/]/.test(incidentId)) {
+
+    statusElement.textContent = "Invalid incident ID.";
+
+    incidentId = null;
 
 }
 
 
-/* ================= AUTH ================= */
+// =================================================
+// AUTHENTICATION
+// =================================================
 
 onAuthStateChanged(auth, (user) => {
 
@@ -288,56 +290,65 @@ onAuthStateChanged(auth, (user) => {
     currentUser = user;
 
     if (incidentId) {
-
         listenToIncident();
-
     }
 
 });
 
 
-/* ================= REALTIME INCIDENT ================= */
+// =================================================
+// REALTIME INCIDENT LISTENER
+// =================================================
 
 function listenToIncident() {
 
-    const incidentRef =
-        ref(db, "incidents/" + incidentId);
+    const incidentRef = ref(
+        db,
+        "incidents/" + incidentId
+    );
 
+    stopIncidentListener = onValue(
 
-    onValue(
         incidentRef,
+
         (snapshot) => {
 
             if (!snapshot.exists()) {
 
-                document.getElementById("currentStatus")
-                    .textContent =
+                statusElement.textContent =
                     "Incident not found.";
 
                 return;
 
             }
 
+            incidentData = snapshot.val();
 
-            incidentData =
-                snapshot.val();
+            // SECURITY: Only the incident owner can view this page.
+            if (incidentData.citizenId !== currentUser.uid) {
 
+                statusElement.textContent = "Access denied.";
 
-            /* USER SECURITY CHECK */
-
-            if (
-                incidentData.userId !==
-                currentUser.uid
-            ) {
-
-                document.getElementById("currentStatus")
+                document.getElementById("incidentDetails")
                     .textContent =
-                    "Access denied.";
+                    "You are not authorized to view this incident.";
+
+                document.getElementById("responderInfo")
+                    .textContent = "Access denied.";
+
+                document.getElementById("locationDetails")
+                    .textContent = "Access denied.";
+
+                document.getElementById("mapButton")
+                    .classList.add("hidden");
+
+                if (stopIncidentListener) {
+                    stopIncidentListener();
+                }
 
                 return;
 
             }
-
 
             renderIncident();
 
@@ -345,11 +356,14 @@ function listenToIncident() {
 
         (error) => {
 
-            console.error(error);
+            console.error("Incident tracking error:", error);
 
-            document.getElementById("currentStatus")
-                .textContent =
+            statusElement.textContent =
                 "Unable to load incident.";
+
+            document.getElementById("incidentDetails")
+                .textContent =
+                "Please check your Firebase permissions.";
 
         }
 
@@ -358,17 +372,18 @@ function listenToIncident() {
 }
 
 
-/* ================= RENDER ================= */
+// =================================================
+// RENDER INCIDENT DETAILS
+// =================================================
 
 function renderIncident() {
 
-    const status =
-        incidentData.status || "Reported";
+    const status = normalizeStatus(
+        incidentData.status || "reported"
+    );
 
-
-    document.getElementById("currentStatus")
-        .textContent = status;
-
+    statusElement.textContent =
+        formatStatus(status);
 
     document.getElementById("lastUpdated")
         .textContent =
@@ -376,11 +391,17 @@ function renderIncident() {
         formatDate(incidentData.updatedAt);
 
 
+    // INCIDENT DETAILS
+
     document.getElementById("incidentDetails")
         .innerHTML = `
 
             <strong>Emergency:</strong>
-            ${escapeHTML(incidentData.type || "Emergency")}
+            ${escapeHTML(
+                incidentData.category ||
+                incidentData.type ||
+                "Emergency"
+            )}
 
             <br>
 
@@ -405,135 +426,190 @@ function renderIncident() {
         `;
 
 
+    // UPDATE TIMELINE
+
     updateTimeline(status);
 
 
-    /* RESPONDER */
+    // RESPONDER INFORMATION
+
+    const responderInfo =
+        document.getElementById("responderInfo");
 
     if (incidentData.responderId) {
 
-        document.getElementById("responderInfo")
-            .innerHTML = `
+        responderInfo.innerHTML = `
 
-                <strong>Responder Assigned</strong>
+            <strong>Responder Assigned</strong>
 
-                <br><br>
+            <br>
 
-                <strong>Name:</strong>
-                ${escapeHTML(
-                    incidentData.responderName ||
-                    "Responder"
-                )}
+            <strong>Name:</strong>
+            ${escapeHTML(
+                incidentData.responderName || "Responder"
+            )}
 
-                <br>
+            <br>
 
-                <strong>Responder ID:</strong>
-                ${escapeHTML(
-                    incidentData.responderId
-                )}
+            <strong>Responder ID:</strong>
+            ${escapeHTML(incidentData.responderId)}
 
-                <br>
+            <br>
 
-                <p>
-                    Your emergency is being handled
-                    by the assigned responder.
-                </p>
+            <p>
+                Your emergency is being handled
+                by the assigned responder.
+            </p>
 
-            `;
+        `;
 
     } else {
 
-        document.getElementById("responderInfo")
-            .textContent =
+        responderInfo.textContent =
             "No responder assigned yet.";
 
     }
 
 
-    /* LOCATION */
+    // EMERGENCY LOCATION
+
+    const location =
+        incidentData.location || {};
 
     const lat =
-        incidentData.latitude;
+        location.latitude ?? incidentData.latitude;
 
     const lng =
-        incidentData.longitude;
+        location.longitude ?? incidentData.longitude;
+
+    const locationDetails =
+        document.getElementById("locationDetails");
+
+    const mapButton =
+        document.getElementById("mapButton");
 
 
     if (
         typeof lat === "number" &&
-        typeof lng === "number"
+        typeof lng === "number" &&
+        Number.isFinite(lat) &&
+        Number.isFinite(lng) &&
+        lat >= -90 &&
+        lat <= 90 &&
+        lng >= -180 &&
+        lng <= 180
     ) {
 
-        document.getElementById("locationDetails")
-            .innerHTML = `
+        locationDetails.innerHTML = `
 
-                Latitude: ${lat.toFixed(6)}
-                <br>
-                Longitude: ${lng.toFixed(6)}
+            <strong>Latitude:</strong>
+            ${lat.toFixed(6)}
 
-            `;
+            <br>
 
+            <strong>Longitude:</strong>
+            ${lng.toFixed(6)}
 
-        document.getElementById("mapButton")
-            .onclick = () => {
+            <br>
 
-                window.open(
-                    `https://www.google.com/maps?q=${lat},${lng}`,
-                    "_blank"
-                );
+            <strong>Address:</strong>
+            ${escapeHTML(location.address || "Not available")}
 
-            };
+        `;
+
+        mapButton.classList.remove("hidden");
+
+        mapButton.onclick = () => {
+
+            const mapURL =
+                `https://www.google.com/maps?q=${lat},${lng}`;
+
+            window.open(
+                mapURL,
+                "_blank",
+                "noopener,noreferrer"
+            );
+
+        };
+
+    } else {
+
+        locationDetails.textContent =
+            "Location information is not available.";
+
+        mapButton.classList.add("hidden");
 
     }
 
 }
 
 
-/* ================= TIMELINE ================= */
+// =================================================
+// NORMALIZE STATUS
+// =================================================
+
+function normalizeStatus(status) {
+
+    return String(status)
+        .toLowerCase()
+        .trim()
+        .replaceAll("_", " ")
+        .replaceAll("-", " ");
+
+}
+
+
+// =================================================
+// FORMAT STATUS
+// =================================================
+
+function formatStatus(status) {
+
+    return status.replace(/\b\w/g, char =>
+        char.toUpperCase()
+    );
+
+}
+
+
+// =================================================
+// UPDATE TIMELINE
+// =================================================
 
 function updateTimeline(status) {
 
     const states = {
 
-        "Reported": 1,
-        "Assigned": 2,
-        "Accepted": 2,
-        "On the Way": 3,
-        "Arrived": 4,
-        "Resolved": 5
+        "reported": 1,
+        "pending": 1,
+        "assigned": 2,
+        "accepted": 2,
+        "on the way": 3,
+        "en route": 3,
+        "arrived": 4,
+        "resolved": 5,
+        "closed": 5
 
     };
 
-
-    const current =
-        states[status] || 1;
-
+    const current = states[status] || 1;
 
     const steps = [
-
         "reportedStep",
         "acceptedStep",
         "onwayStep",
         "arrivedStep",
         "resolvedStep"
-
     ];
-
 
     steps.forEach((id, index) => {
 
         const element =
             document.getElementById(id);
 
-        const stepNumber =
-            index + 1;
+        const stepNumber = index + 1;
 
-
-        element.classList.remove(
-            "active",
-            "done"
-        );
-
+        element.classList.remove("active", "done");
 
         if (stepNumber < current) {
 
@@ -550,21 +626,30 @@ function updateTimeline(status) {
 }
 
 
-/* ================= HELPERS ================= */
+// =================================================
+// FORMAT DATE
+// =================================================
 
 function formatDate(value) {
 
-    if (!value) return "Unknown";
+    if (!value) {
+        return "Unknown";
+    }
 
-    const date =
-        new Date(value);
+    const date = new Date(value);
 
-    if (isNaN(date)) return "Unknown";
+    if (isNaN(date.getTime())) {
+        return "Unknown";
+    }
 
     return date.toLocaleString();
 
 }
 
+
+// =================================================
+// HTML ESCAPE
+// =================================================
 
 function escapeHTML(value) {
 
