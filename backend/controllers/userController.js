@@ -1,9 +1,11 @@
+
 // ============================================================
 // USER CONTROLLER
 // Smart Emergency Response
 // ============================================================
 
 const {
+    admin,
     getUserById,
     updateUserById,
     deleteUserById,
@@ -19,13 +21,141 @@ function timestamp() {
     return new Date().toISOString();
 }
 
-
 function clean(value) {
     if (value === undefined || value === null) {
         return "";
     }
 
     return String(value).trim();
+}
+
+
+// ============================================================
+// CREATE RESPONDER ACCOUNT
+// Admin only - Protected by route middleware
+// ============================================================
+
+async function createResponder(req, res, next) {
+
+    let createdUid = null;
+
+    try {
+
+        const body = req.body || {};
+
+        const name = clean(body.name);
+        const email = clean(body.email).toLowerCase();
+        const password = body.password;
+        const phone = clean(body.phone);
+        const department = clean(body.department);
+        const designation = clean(body.designation);
+
+        // Validate required fields
+        if (!name || !email || !password) {
+            return res.status(400).json({
+                success: false,
+                message: "Name, email and password are required."
+            });
+        }
+
+        // Validate email
+        const emailRegex =
+            /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+        if (!emailRegex.test(email)) {
+            return res.status(400).json({
+                success: false,
+                message: "Please enter a valid email address."
+            });
+        }
+
+        // Validate password
+        if (
+            typeof password !== "string" ||
+            password.length < 8 ||
+            password.length > 128
+        ) {
+            return res.status(400).json({
+                success: false,
+                message: "Password must contain 8 to 128 characters."
+            });
+        }
+
+        // Create Firebase Authentication account
+        const userRecord = await admin.auth().createUser({
+            email,
+            password,
+            displayName: name,
+            disabled: false
+        });
+
+        createdUid = userRecord.uid;
+
+        // Create matching Realtime Database profile
+        const responderProfile = {
+            name,
+            email,
+            role: "responder",
+
+            phone,
+            department,
+            designation,
+
+            approved: false,
+            available: false,
+            status: "offline",
+
+            createdAt: timestamp(),
+            updatedAt: timestamp()
+        };
+
+        await updateUserById(
+            createdUid,
+            responderProfile
+        );
+
+        return res.status(201).json({
+            success: true,
+            message: "Responder account created successfully. Approval is pending.",
+
+            responder: {
+                uid: createdUid,
+                name,
+                email,
+                phone,
+                department,
+                designation,
+                role: "responder",
+                approved: false,
+                available: false,
+                status: "offline",
+                createdAt: responderProfile.createdAt
+            }
+        });
+
+    } catch (error) {
+
+        // Roll back Firebase Auth account if profile creation fails
+        if (createdUid) {
+            try {
+                await admin.auth().deleteUser(createdUid);
+            } catch (cleanupError) {
+                console.error(
+                    "Responder account cleanup failed:",
+                    cleanupError.code || cleanupError.message
+                );
+            }
+        }
+
+        if (error.code === "auth/email-already-exists") {
+            return res.status(409).json({
+                success: false,
+                message: "This email is already registered."
+            });
+        }
+
+        next(error);
+    }
 }
 
 
@@ -41,32 +171,24 @@ async function getUsers(req, res, next) {
             users = [];
         }
 
-        const {
-            role,
-            search
-        } = req.query;
+        const { role, search } = req.query;
 
         if (role) {
             users = users.filter(
-                (user) =>
+                user =>
                     clean(user.role).toLowerCase() ===
                     clean(role).toLowerCase()
             );
         }
 
         if (search) {
-            const query =
-                clean(search).toLowerCase();
+            const query = clean(search).toLowerCase();
 
-            users = users.filter((user) => {
-                const name =
-                    clean(user.name).toLowerCase();
+            users = users.filter(user => {
 
-                const email =
-                    clean(user.email).toLowerCase();
-
-                const phone =
-                    clean(user.phone).toLowerCase();
+                const name = clean(user.name).toLowerCase();
+                const email = clean(user.email).toLowerCase();
+                const phone = clean(user.phone).toLowerCase();
 
                 return (
                     name.includes(query) ||
@@ -102,13 +224,11 @@ async function getUser(req, res, next) {
         ) {
             return res.status(403).json({
                 success: false,
-                message:
-                    "You are not allowed to access this user."
+                message: "You are not allowed to access this user."
             });
         }
 
-        const user =
-            await getUserById(userId);
+        const user = await getUserById(userId);
 
         if (!user) {
             return res.status(404).json({
@@ -142,13 +262,11 @@ async function updateUser(req, res, next) {
         ) {
             return res.status(403).json({
                 success: false,
-                message:
-                    "You can only update your own profile."
+                message: "You can only update your own profile."
             });
         }
 
-        const existing =
-            await getUserById(userId);
+        const existing = await getUserById(userId);
 
         if (!existing) {
             return res.status(404).json({
@@ -179,21 +297,18 @@ async function updateUser(req, res, next) {
             }
         }
 
-        const updated =
-            await updateUserById(
-                userId,
-                updates
-            );
+        const updated = await updateUserById(
+            userId,
+            updates
+        );
 
         return res.json({
             success: true,
-            message:
-                "User updated successfully.",
-            user:
-                updated || {
-                    ...existing,
-                    ...updates
-                }
+            message: "User updated successfully.",
+            user: updated || {
+                ...existing,
+                ...updates
+            }
         });
 
     } catch (error) {
@@ -206,16 +321,11 @@ async function updateUser(req, res, next) {
 // CHANGE USER ROLE
 // ============================================================
 
-async function updateUserRole(
-    req,
-    res,
-    next
-) {
+async function updateUserRole(req, res, next) {
     try {
         const userId = req.params.id;
 
-        const role =
-            clean(req.body?.role).toLowerCase();
+        const role = clean(req.body?.role).toLowerCase();
 
         const allowedRoles = [
             "citizen",
@@ -226,13 +336,11 @@ async function updateUserRole(
         if (!allowedRoles.includes(role)) {
             return res.status(400).json({
                 success: false,
-                message:
-                    "Invalid role. Use citizen, responder or admin."
+                message: "Invalid role. Use citizen, responder or admin."
             });
         }
 
-        const existing =
-            await getUserById(userId);
+        const existing = await getUserById(userId);
 
         if (!existing) {
             return res.status(404).json({
@@ -246,10 +354,6 @@ async function updateUserRole(
             updatedAt: timestamp()
         };
 
-        /*
-         * Responder defaults.
-         */
-
         if (
             role === "responder" &&
             existing.available === undefined
@@ -258,21 +362,18 @@ async function updateUserRole(
             updates.status = "offline";
         }
 
-        const updated =
-            await updateUserById(
-                userId,
-                updates
-            );
+        const updated = await updateUserById(
+            userId,
+            updates
+        );
 
         return res.json({
             success: true,
-            message:
-                "User role updated successfully.",
-            user:
-                updated || {
-                    ...existing,
-                    ...updates
-                }
+            message: "User role updated successfully.",
+            user: updated || {
+                ...existing,
+                ...updates
+            }
         });
 
     } catch (error) {
@@ -289,8 +390,7 @@ async function deleteUser(req, res, next) {
     try {
         const userId = req.params.id;
 
-        const user =
-            await getUserById(userId);
+        const user = await getUserById(userId);
 
         if (!user) {
             return res.status(404).json({
@@ -299,19 +399,13 @@ async function deleteUser(req, res, next) {
             });
         }
 
-        /*
-         * Prevent accidental deletion of
-         * another administrator through this API.
-         */
-
         if (
             user.role === "admin" &&
             userId !== req.user.uid
         ) {
             return res.status(403).json({
                 success: false,
-                message:
-                    "Administrator accounts require additional protection."
+                message: "Administrator accounts require additional protection."
             });
         }
 
@@ -319,8 +413,7 @@ async function deleteUser(req, res, next) {
 
         return res.json({
             success: true,
-            message:
-                "User deleted successfully."
+            message: "User deleted successfully."
         });
 
     } catch (error) {
@@ -334,6 +427,7 @@ async function deleteUser(req, res, next) {
 // ============================================================
 
 module.exports = {
+    createResponder,
     getUsers,
     getUser,
     updateUser,
