@@ -1,4 +1,5 @@
 
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -9,49 +10,72 @@
 <style>
 *{box-sizing:border-box;font-family:Arial,sans-serif}
 body{margin:0;background:#f1f5f9;color:#1e293b}
+
 header{
 background:#0f172a;color:white;padding:18px 6%;
 display:flex;justify-content:space-between;align-items:center
 }
+
 main{max-width:1100px;margin:auto;padding:30px 20px}
+
 .toolbar,.create-panel{
 background:white;padding:22px;border-radius:12px;margin:20px 0;
 box-shadow:0 4px 15px rgba(0,0,0,.05)
 }
+
 .create-panel h2{margin-top:0}
+
 .form-grid{
 display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
 gap:14px
 }
+
 input,select{
 width:100%;padding:12px;border:1px solid #cbd5e1;
 border-radius:8px;background:white
 }
+
 button{
 border:0;padding:11px 16px;border-radius:8px;
 cursor:pointer;font-weight:bold
 }
+
+button:disabled{opacity:.6;cursor:not-allowed}
+
 .primary{background:#2563eb;color:white}
 .back{background:#475569;color:white}
 .map{background:#2563eb;color:white}
+.approve{background:#15803d;color:white}
+.reject{background:#dc2626;color:white}
+
 .grid{
 display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));
 gap:16px
 }
+
 .card{
 background:white;padding:22px;border-radius:14px;
 box-shadow:0 4px 15px rgba(0,0,0,.05)
 }
+
 .online{color:#15803d;font-weight:bold}
 .offline{color:#dc2626;font-weight:bold}
+
 .status{
 display:inline-block;padding:5px 10px;border-radius:20px;
 font-size:12px;background:#e2e8f0;color:#334155
 }
+
+.approved-status{background:#dcfce7;color:#166534}
+.pending-status{background:#fef3c7;color:#92400e}
+
 .message{margin-top:12px;font-weight:bold}
 .success{color:#15803d}
 .error{color:#dc2626}
+
 .section-heading{margin-top:35px}
+.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:15px}
+
 @media(max-width:600px){
 header{padding:16px 4%}
 main{padding:20px 14px}
@@ -71,7 +95,7 @@ Dashboard
 <main>
 
 <h1>Emergency Responders</h1>
-<p>Create, manage and monitor emergency responders.</p>
+<p>Create, manage, approve and monitor emergency responders.</p>
 
 <section class="create-panel">
 
@@ -82,7 +106,6 @@ Dashboard
 <div class="form-grid">
 
 <input id="name" type="text" placeholder="Full Name" required>
-
 <input id="email" type="email" placeholder="Email Address" required>
 
 <input id="password" type="password"
@@ -124,6 +147,12 @@ Create Responder
 <option value="offline">Offline</option>
 </select>
 
+<select id="approvalFilter" style="margin-top:12px">
+<option value="all">All Approval Status</option>
+<option value="pending">Pending / Not Approved</option>
+<option value="approved">Approved</option>
+</select>
+
 </section>
 
 <h2 class="section-heading">Responder List</h2>
@@ -131,6 +160,8 @@ Create Responder
 <section id="list" class="grid">
 Loading responders...
 </section>
+
+<p id="actionMessage" class="message" aria-live="polite"></p>
 
 </main>
 
@@ -146,12 +177,22 @@ import {
 ref,get,onValue
 } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-database.js";
 
+// ============================================================
+// VARIABLES
+// ============================================================
+
 let responders=[];
 let currentUser=null;
 
 const form=document.getElementById("createResponderForm");
 const createBtn=document.getElementById("createBtn");
 const formMessage=document.getElementById("formMessage");
+const actionMessage=document.getElementById("actionMessage");
+const listContainer=document.getElementById("list");
+
+// ============================================================
+// ADMIN AUTHENTICATION
+// ============================================================
 
 onAuthStateChanged(auth,async(user)=>{
 
@@ -174,12 +215,17 @@ currentUser=user;
 loadResponders();
 
 }catch(error){
+
 console.error(error);
 alert("Unable to verify admin access.");
+
 }
 
 });
 
+// ============================================================
+// CREATE RESPONDER
+// ============================================================
 
 form.addEventListener("submit",async(event)=>{
 
@@ -199,12 +245,19 @@ vehicle:document.getElementById("vehicle").value.trim()
 };
 
 if(responderData.password.length<8){
-showMessage("Password must contain at least 8 characters.","error");
+
+showMessage(
+"Password must contain at least 8 characters.",
+"error"
+);
+
 return;
+
 }
 
 createBtn.disabled=true;
 createBtn.textContent="Creating...";
+
 showMessage("Creating responder account...","");
 
 try{
@@ -212,7 +265,7 @@ try{
 const token=await currentUser.getIdToken(true);
 
 const response=await fetch(
-"http://localhost:5000/api/admin/responders",
+"http://localhost:5000/api/users/responders",
 {
 method:"POST",
 headers:{
@@ -226,13 +279,15 @@ body:JSON.stringify(responderData)
 const result=await response.json();
 
 if(!response.ok){
-throw new Error(result.message||result.error||"Unable to create responder.");
+throw new Error(
+result.message||result.error||"Unable to create responder."
+);
 }
 
 form.reset();
 
 showMessage(
-"Responder account created successfully.",
+"Responder created successfully. Approval is pending.",
 "success"
 );
 
@@ -250,6 +305,9 @@ createBtn.textContent="Create Responder";
 
 });
 
+// ============================================================
+// MESSAGES
+// ============================================================
 
 function showMessage(message,type){
 
@@ -258,11 +316,22 @@ formMessage.className="message "+type;
 
 }
 
+function showActionMessage(message,type){
+
+actionMessage.textContent=message;
+actionMessage.className="message "+type;
+
+}
+
+// ============================================================
+// LOAD RESPONDERS
+// ============================================================
 
 function loadResponders(){
 
 onValue(
 ref(db,"users"),
+
 snapshot=>{
 
 responders=[];
@@ -285,54 +354,165 @@ id:child.key,
 render();
 
 },
+
 error=>{
 
 console.error("Responder loading error:",error);
 
-document.getElementById("list").textContent=
+listContainer.textContent=
 "Unable to load responders. Check database permissions.";
 
 }
+
 );
 
 }
 
+// ============================================================
+// FILTERS
+// ============================================================
 
 document
 .getElementById("availabilityFilter")
 .addEventListener("change",render);
 
+document
+.getElementById("approvalFilter")
+.addEventListener("change",render);
+
+// ============================================================
+// APPROVE / REJECT RESPONDER
+// ============================================================
+
+async function updateApproval(responderId,approved,button){
+
+if(!currentUser)return;
+
+const action=approved?"approve":"reject";
+
+const confirmation=confirm(
+approved
+? "Are you sure you want to approve this responder?"
+: "Are you sure you want to reject this responder?"
+);
+
+if(!confirmation)return;
+
+button.disabled=true;
+button.textContent=approved?"Approving...":"Rejecting...";
+
+try{
+
+const token=await currentUser.getIdToken(true);
+
+const response=await fetch(
+"http://localhost:5000/api/users/"+encodeURIComponent(responderId)+"/approval",
+{
+method:"PATCH",
+headers:{
+"Content-Type":"application/json",
+"Authorization":"Bearer "+token
+},
+body:JSON.stringify({
+approved:approved
+})
+}
+);
+
+const result=await response.json();
+
+if(!response.ok){
+
+throw new Error(
+result.message||result.error||"Unable to update approval."
+);
+
+}
+
+showActionMessage(
+approved
+? "Responder approved successfully."
+: "Responder approval revoked. Responder is now offline.",
+"success"
+);
+
+// Re-render using the returned status immediately.
+responders=responders.map(responder=>
+responder.id===responderId
+? {
+...responder,
+approved,
+...(approved?{}:{available:false,status:"offline"})
+}
+: responder
+);
+
+render();
+
+}catch(error){
+
+console.error(error);
+
+showActionMessage(error.message,"error");
+
+button.disabled=false;
+button.textContent=approved?"Approve":"Reject";
+
+}
+
+}
+
+// ============================================================
+// RENDER RESPONDERS
+// ============================================================
 
 function render(){
 
-const filter=
+const availabilityFilter=
 document.getElementById("availabilityFilter").value;
 
-let list=responders;
+const approvalFilter=
+document.getElementById("approvalFilter").value;
 
-if(filter==="online"){
-list=responders.filter(r=>r.available===true);
+let filtered=responders;
+
+if(availabilityFilter==="online"){
+
+filtered=filtered.filter(r=>r.available===true);
+
 }
 
-if(filter==="offline"){
-list=responders.filter(r=>r.available!==true);
+if(availabilityFilter==="offline"){
+
+filtered=filtered.filter(r=>r.available!==true);
+
 }
 
-const container=document.getElementById("list");
+if(approvalFilter==="approved"){
 
-container.innerHTML="";
+filtered=filtered.filter(r=>r.approved===true);
 
-if(list.length===0){
-container.textContent="No responders found.";
+}
+
+if(approvalFilter==="pending"){
+
+filtered=filtered.filter(r=>r.approved!==true);
+
+}
+
+listContainer.innerHTML="";
+
+if(filtered.length===0){
+
+listContainer.textContent="No responders found.";
 return;
+
 }
 
-list.forEach(r=>{
+filtered.forEach(r=>{
 
 const card=document.createElement("div");
 card.className="card";
-
-const available=r.available===true;
 
 const title=document.createElement("h2");
 title.textContent=r.name||"Unnamed Responder";
@@ -343,43 +523,133 @@ const details=document.createElement("div");
 ["Email",r.email],
 ["Phone",r.phone],
 ["Department",r.department],
-["Vehicle",r.vehicle],
-["Approval",r.approved===true?"Approved":"Pending Approval"]
+["Vehicle",r.vehicle]
 ].forEach(([label,value])=>{
 
 const p=document.createElement("p");
+
 const strong=document.createElement("strong");
 strong.textContent=label+": ";
-p.append(strong,document.createTextNode(value||"Not specified"));
+
+p.append(
+strong,
+document.createTextNode(value||"Not specified")
+);
+
 details.appendChild(p);
 
 });
 
-const status=document.createElement("p");
-status.className=available?"online":"offline";
-status.textContent=available?"● Available":"● Offline";
+// Approval status
+const approval=document.createElement("p");
+const approvalBadge=document.createElement("span");
 
+approvalBadge.className=
+"status "+(r.approved===true
+?"approved-status"
+:"pending-status");
+
+approvalBadge.textContent=
+r.approved===true
+?"Approved"
+:"Not Approved";
+
+approval.append(
+document.createTextNode("Approval: "),
+approvalBadge
+);
+
+// Availability status
+const status=document.createElement("p");
+
+const available=r.available===true;
+
+status.className=available?"online":"offline";
+
+status.textContent=
+available?"● Available":"● Offline";
+
+// Action buttons
+const actions=document.createElement("div");
+actions.className="actions";
+
+if(r.approved!==true){
+
+const approveButton=document.createElement("button");
+approveButton.className="approve";
+approveButton.textContent="✓ Approve";
+
+approveButton.addEventListener("click",()=>{
+
+updateApproval(r.id,true,approveButton);
+
+});
+
+actions.appendChild(approveButton);
+
+}else{
+
+const rejectButton=document.createElement("button");
+rejectButton.className="reject";
+rejectButton.textContent="✕ Revoke Approval";
+
+rejectButton.addEventListener("click",()=>{
+
+updateApproval(r.id,false,rejectButton);
+
+});
+
+actions.appendChild(rejectButton);
+
+}
+
+// View location
 const mapButton=document.createElement("button");
 mapButton.className="map";
 mapButton.textContent="View Location";
 
 mapButton.addEventListener("click",()=>{
+
 openLocation(r.latitude,r.longitude);
+
 });
 
-card.append(title,details,status,mapButton);
-container.appendChild(card);
+actions.appendChild(mapButton);
+
+card.append(
+title,
+details,
+approval,
+status,
+actions
+);
+
+listContainer.appendChild(card);
 
 });
 
 }
 
+// ============================================================
+// VIEW RESPONDER LOCATION
+// ============================================================
 
 function openLocation(lat,lng){
 
-if(typeof lat!=="number"||typeof lng!=="number"){
+if(
+typeof lat!=="number"||
+typeof lng!=="number"||
+!Number.isFinite(lat)||
+!Number.isFinite(lng)||
+lat < -90||
+lat > 90||
+lng < -180||
+lng > 180
+){
+
 alert("Responder location unavailable.");
 return;
+
 }
 
 window.open(

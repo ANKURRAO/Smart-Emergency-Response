@@ -1,4 +1,5 @@
 
+
 // ============================================================
 // SMART EMERGENCY RESPONSE
 // User Routes
@@ -9,6 +10,7 @@ const router = express.Router();
 
 const {
     createResponder,
+    updateResponderApproval,
     getUsers,
     getUser,
     updateUser,
@@ -18,7 +20,6 @@ const {
 
 const auth = require("../middleware/auth");
 const roleCheck = require("../middleware/roleCheck");
-
 
 // ============================================================
 // CREATE RESPONDER
@@ -32,6 +33,17 @@ router.post(
     createResponder
 );
 
+// ============================================================
+// APPROVE / REJECT RESPONDER
+// Admin only
+// ============================================================
+
+router.patch(
+    "/:id/approval",
+    auth,
+    roleCheck("admin"),
+    updateResponderApproval
+);
 
 // ============================================================
 // GET ALL USERS
@@ -45,7 +57,6 @@ router.get(
     getUsers
 );
 
-
 // ============================================================
 // GET USER BY ID
 // ============================================================
@@ -56,7 +67,6 @@ router.get(
     getUser
 );
 
-
 // ============================================================
 // UPDATE USER
 // ============================================================
@@ -66,7 +76,6 @@ router.put(
     auth,
     updateUser
 );
-
 
 // ============================================================
 // UPDATE USER ROLE
@@ -80,7 +89,6 @@ router.patch(
     updateUserRole
 );
 
-
 // ============================================================
 // DELETE USER
 // Admin only
@@ -92,6 +100,5 @@ router.delete(
     roleCheck("admin"),
     deleteUser
 );
-
 
 module.exports = router;

@@ -1,4 +1,5 @@
 
+
 // ============================================================
 // USER CONTROLLER
 // Smart Emergency Response
@@ -11,7 +12,6 @@ const {
     deleteUserById,
     getAllUsers
 } = require("../services/firebaseService");
-
 
 // ============================================================
 // HELPERS
@@ -29,18 +29,15 @@ function clean(value) {
     return String(value).trim();
 }
 
-
 // ============================================================
 // CREATE RESPONDER ACCOUNT
-// Admin only - Protected by route middleware
+// Admin only
 // ============================================================
 
 async function createResponder(req, res, next) {
-
     let createdUid = null;
 
     try {
-
         const body = req.body || {};
 
         const name = clean(body.name);
@@ -49,8 +46,8 @@ async function createResponder(req, res, next) {
         const phone = clean(body.phone);
         const department = clean(body.department);
         const designation = clean(body.designation);
+        const vehicle = clean(body.vehicle);
 
-        // Validate required fields
         if (!name || !email || !password) {
             return res.status(400).json({
                 success: false,
@@ -58,9 +55,7 @@ async function createResponder(req, res, next) {
             });
         }
 
-        // Validate email
-        const emailRegex =
-            /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
         if (!emailRegex.test(email)) {
             return res.status(400).json({
@@ -69,7 +64,6 @@ async function createResponder(req, res, next) {
             });
         }
 
-        // Validate password
         if (
             typeof password !== "string" ||
             password.length < 8 ||
@@ -81,7 +75,6 @@ async function createResponder(req, res, next) {
             });
         }
 
-        // Create Firebase Authentication account
         const userRecord = await admin.auth().createUser({
             email,
             password,
@@ -91,33 +84,26 @@ async function createResponder(req, res, next) {
 
         createdUid = userRecord.uid;
 
-        // Create matching Realtime Database profile
         const responderProfile = {
             name,
             email,
             role: "responder",
-
             phone,
             department,
             designation,
-
+            vehicle,
             approved: false,
             available: false,
             status: "offline",
-
             createdAt: timestamp(),
             updatedAt: timestamp()
         };
 
-        await updateUserById(
-            createdUid,
-            responderProfile
-        );
+        await updateUserById(createdUid, responderProfile);
 
         return res.status(201).json({
             success: true,
             message: "Responder account created successfully. Approval is pending.",
-
             responder: {
                 uid: createdUid,
                 name,
@@ -125,6 +111,7 @@ async function createResponder(req, res, next) {
                 phone,
                 department,
                 designation,
+                vehicle,
                 role: "responder",
                 approved: false,
                 available: false,
@@ -134,8 +121,6 @@ async function createResponder(req, res, next) {
         });
 
     } catch (error) {
-
-        // Roll back Firebase Auth account if profile creation fails
         if (createdUid) {
             try {
                 await admin.auth().deleteUser(createdUid);
@@ -158,6 +143,70 @@ async function createResponder(req, res, next) {
     }
 }
 
+// ============================================================
+// APPROVE / REJECT RESPONDER
+// Admin only
+// ============================================================
+
+async function updateResponderApproval(req, res, next) {
+    try {
+        const responderId = req.params.id;
+        const approved = req.body?.approved;
+
+        if (typeof approved !== "boolean") {
+            return res.status(400).json({
+                success: false,
+                message: "Approved must be true or false."
+            });
+        }
+
+        const existing = await getUserById(responderId);
+
+        if (!existing) {
+            return res.status(404).json({
+                success: false,
+                message: "Responder not found."
+            });
+        }
+
+        if (existing.role !== "responder") {
+            return res.status(400).json({
+                success: false,
+                message: "Approval can only be changed for responder accounts."
+            });
+        }
+
+        const updates = {
+            approved,
+            updatedAt: timestamp()
+        };
+
+        // Rejected responders must remain offline.
+        if (!approved) {
+            updates.available = false;
+            updates.status = "offline";
+        }
+
+        const updated = await updateUserById(
+            responderId,
+            updates
+        );
+
+        return res.json({
+            success: true,
+            message: approved
+                ? "Responder approved successfully."
+                : "Responder approval revoked successfully.",
+            responder: updated || {
+                ...existing,
+                ...updates
+            }
+        });
+
+    } catch (error) {
+        next(error);
+    }
+}
 
 // ============================================================
 // GET ALL USERS
@@ -185,7 +234,6 @@ async function getUsers(req, res, next) {
             const query = clean(search).toLowerCase();
 
             users = users.filter(user => {
-
                 const name = clean(user.name).toLowerCase();
                 const email = clean(user.email).toLowerCase();
                 const phone = clean(user.phone).toLowerCase();
@@ -208,7 +256,6 @@ async function getUsers(req, res, next) {
         next(error);
     }
 }
-
 
 // ============================================================
 // GET USER
@@ -246,7 +293,6 @@ async function getUser(req, res, next) {
         next(error);
     }
 }
-
 
 // ============================================================
 // UPDATE USER
@@ -316,7 +362,6 @@ async function updateUser(req, res, next) {
     }
 }
 
-
 // ============================================================
 // CHANGE USER ROLE
 // ============================================================
@@ -381,7 +426,6 @@ async function updateUserRole(req, res, next) {
     }
 }
 
-
 // ============================================================
 // DELETE USER
 // ============================================================
@@ -421,13 +465,13 @@ async function deleteUser(req, res, next) {
     }
 }
 
-
 // ============================================================
 // EXPORTS
 // ============================================================
 
 module.exports = {
     createResponder,
+    updateResponderApproval,
     getUsers,
     getUser,
     updateUser,
