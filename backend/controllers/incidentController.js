@@ -859,65 +859,69 @@ async function updateIncidentStatus(
 // ASSIGN RESPONDER
 // ============================================================
 
-async function assignResponder(
-    req,
-    res,
-    next
-) {
-    try {
-        const incidentId =
-            req.params.id;
 
-        const responderId =
-            normalizeText(
-                req.body?.responderId
-            );
+async function assignResponder(req, res, next) {
+    try {
+        const incidentId = req.params.id;
+
+        const responderId = normalizeText(
+            req.body?.responderId
+        );
 
         if (!responderId) {
             return res.status(400).json({
                 success: false,
-                message:
-                    "Responder ID is required."
+                message: "Responder ID is required."
             });
         }
 
-        const incident =
-            await getIncidentById(
-                incidentId
-            );
+        const incident = await getIncidentById(incidentId);
 
         if (!incident) {
             return res.status(404).json({
                 success: false,
-                message:
-                    "Incident not found."
+                message: "Incident not found."
             });
         }
 
-        const responders =
-            await getAllResponders();
+        const responders = await getAllResponders();
 
-        const responder =
-            (Array.isArray(responders)
-                ? responders
-                : []
-            ).find(
-                (item) =>
-                    item.uid === responderId ||
-                    item.id === responderId ||
-                    item.userId === responderId
-            );
+        const responder = (
+            Array.isArray(responders) ? responders : []
+        ).find(item =>
+            item.uid === responderId ||
+            item.id === responderId ||
+            item.userId === responderId
+        );
 
         if (!responder) {
             return res.status(404).json({
                 success: false,
-                message:
-                    "Responder not found."
+                message: "Responder not found."
             });
         }
 
-        const timestamp =
-            getCurrentTimestamp();
+        // Only approved responders can receive incidents.
+        if (responder.approved !== true) {
+            return res.status(403).json({
+                success: false,
+                message: "Responder is not approved."
+            });
+        }
+
+        // Only available responders can receive incidents.
+        const isAvailable =
+            responder.available === true ||
+            responder.status === "available";
+
+        if (!isAvailable) {
+            return res.status(400).json({
+                success: false,
+                message: "Responder is currently unavailable."
+            });
+        }
+
+        const timestamp = getCurrentTimestamp();
 
         const updates = {
             responderId,
@@ -929,41 +933,44 @@ async function assignResponder(
                 "Responder",
 
             status: "assigned",
-
             assignedAt: timestamp,
-
             updatedAt: timestamp
         };
 
-        const updated =
-            await updateIncidentById(
-                incidentId,
-                updates
-            );
-
-        await notifyResponderAssignment(
-            {
-                ...incident,
-                ...updates
-            },
-            responderId
+        const updated = await updateIncidentById(
+            incidentId,
+            updates
         );
+
+        try {
+            await notifyResponderAssignment(
+                {
+                    ...incident,
+                    ...updates
+                },
+                responderId
+            );
+        } catch (notificationError) {
+            console.error(
+                "Assignment notification failed:",
+                notificationError.message
+            );
+        }
 
         return res.json({
             success: true,
-            message:
-                "Responder assigned successfully.",
-            incident:
-                updated || {
-                    ...incident,
-                    ...updates
-                }
+            message: "Responder assigned successfully.",
+            incident: updated || {
+                ...incident,
+                ...updates
+            }
         });
 
     } catch (error) {
         next(error);
     }
 }
+
 
 
 // ============================================================
@@ -1328,46 +1335,39 @@ async function detectDuplicate(
 // AI — RECOMMEND RESPONDER
 // ============================================================
 
-async function recommendResponder(
-    incident
-) {
-    const responders =
-        await getAllResponders();
+
+async function recommendResponder(incident) {
+    const responders = await getAllResponders();
 
     if (!Array.isArray(responders)) {
         return null;
     }
 
-    const availableResponders =
-        responders.filter(
-            (responder) =>
+    const availableResponders = responders.filter(
+        responder =>
+            responder.approved === true &&
+            (
                 responder.available === true ||
                 responder.status === "available"
-        );
+            )
+    );
 
-    if (
-        availableResponders.length === 0
-    ) {
+    if (availableResponders.length === 0) {
         return null;
     }
 
-    const latitude =
-        Number(incident.latitude);
+    const latitude = Number(incident.latitude);
+    const longitude = Number(incident.longitude);
 
-    const longitude =
-        Number(incident.longitude);
-
-    const sorted =
-        sortByDistance(
-            availableResponders,
-            latitude,
-            longitude
-        );
+    const sorted = sortByDistance(
+        availableResponders,
+        latitude,
+        longitude
+    );
 
     const recommended =
         sorted.find(
-            (responder) =>
-                responder.distanceKm !== null
+            responder => responder.distanceKm !== null
         ) || sorted[0];
 
     if (!recommended) {
@@ -1387,13 +1387,12 @@ async function recommendResponder(
             "Responder",
 
         distanceKm:
-            recommended.distanceKm ??
-            null,
+            recommended.distanceKm ?? null,
 
-        reason:
-            "Nearest available responder"
+        reason: "Nearest approved and available responder"
     };
 }
+
 
 
 // ============================================================

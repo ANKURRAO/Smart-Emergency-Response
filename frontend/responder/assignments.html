@@ -238,42 +238,50 @@ onAuthStateChanged(auth, async (user) => {
 
 /* ================= LOAD ================= */
 
-function loadAssignments() {
+async function loadAssignments() {
+    const list = document.getElementById("list");
 
-    const q =
-        query(
-            ref(db, "incidents"),
-            orderByChild("responderId"),
-            equalTo(currentUser.uid)
+    list.textContent = "Loading assignments...";
+
+    try {
+        const token = await currentUser.getIdToken();
+
+        const response = await fetch(
+            `http://localhost:5000/api/incidents?responderId=${encodeURIComponent(currentUser.uid)}`,
+            {
+                method: "GET",
+                headers: {
+                    "Authorization": `Bearer ${token}`
+                }
+            }
         );
 
+        const result = await response.json();
 
-    onValue(q, (snapshot) => {
+        if (!response.ok || result.success !== true) {
+            throw new Error(result.message || "Unable to load assignments.");
+        }
 
-        incidents = [];
+        incidents = Array.isArray(result.incidents)
+            ? result.incidents
+            : [];
 
-
-        snapshot.forEach(child => {
-
-            incidents.push({
-                id: child.key,
-                ...child.val()
-            });
-
-        });
-
-
-        incidents.sort(
-            (a,b) =>
-                new Date(b.createdAt || 0) -
-                new Date(a.createdAt || 0)
+        incidents.sort((a, b) =>
+            new Date(b.createdAt || 0) -
+            new Date(a.createdAt || 0)
         );
-
 
         render();
 
-    });
+    } catch (error) {
+        console.error("Assignment loading error:", error);
 
+        list.innerHTML = `
+            <div class="empty">
+                ${escapeHTML(error.message)}
+            </div>
+        `;
+    }
 }
 
 
