@@ -1,4 +1,5 @@
 
+
 // ============================================================
 // SMART EMERGENCY RESPONSE
 // Incident Routes
@@ -20,11 +21,7 @@ const {
 const auth = require("../middleware/auth");
 const roleCheck = require("../middleware/roleCheck");
 
-// ------------------------------------------------------------
-// Create Emergency Incident
-// Citizen only
-// ------------------------------------------------------------
-
+// Create Emergency Incident - Citizen only
 router.post(
     "/",
     auth,
@@ -32,35 +29,22 @@ router.post(
     createIncident
 );
 
-// ------------------------------------------------------------
-// Get All Incidents
-// Admin / Responder
-// ------------------------------------------------------------
-
+// Get Incidents - Admin / Responder / Citizen
 router.get(
     "/",
     auth,
-    roleCheck(["admin", "responder"]),
+    roleCheck(["admin", "responder", "citizen"]),
     getIncidents
 );
 
-// ------------------------------------------------------------
 // Get Single Incident
-// Authenticated users
-// Ownership checked in controller
-// ------------------------------------------------------------
-
 router.get(
     "/:id",
     auth,
     getIncident
 );
 
-// ------------------------------------------------------------
-// Update Incident
-// Citizen (own incident) / Admin
-// ------------------------------------------------------------
-
+// Update Incident - Citizen (own) / Admin
 router.put(
     "/:id",
     auth,
@@ -68,12 +52,7 @@ router.put(
     updateIncident
 );
 
-// ------------------------------------------------------------
-// Update Incident Status
-// Admin / Responder
-// Controller checks responder assignment
-// ------------------------------------------------------------
-
+// Update Incident Status - Admin / Responder
 router.patch(
     "/:id/status",
     auth,
@@ -81,11 +60,7 @@ router.patch(
     updateIncidentStatus
 );
 
-// ------------------------------------------------------------
-// Assign Responder
-// Admin only
-// ------------------------------------------------------------
-
+// Assign Responder - Admin only
 router.patch(
     "/:id/assign",
     auth,
@@ -93,11 +68,7 @@ router.patch(
     assignResponder
 );
 
-// ------------------------------------------------------------
-// Delete Incident
-// Admin only
-// ------------------------------------------------------------
-
+// Delete Incident - Admin only
 router.delete(
     "/:id",
     auth,

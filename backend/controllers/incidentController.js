@@ -317,46 +317,45 @@ await sendIncidentNotification({
 
 async function getIncidents(req, res, next) {
     try {
-        const incidents =
-            await getAllIncidents();
+        const incidents = await getAllIncidents();
 
         let result = Array.isArray(incidents)
-            ? incidents
+            ? [...incidents]
             : [];
 
-        /*
-         * Responders can receive only relevant incidents.
-         * Admins can access the complete incident list.
-         */
+        const role = req.userRole;
+        const currentUserId = req.user?.uid;
 
-        if (
-            req.userRole === "responder"
-        ) {
-            const statusFilter = [
-                "reported",
-                "pending",
-                "assigned",
-                "accepted",
-                "en route",
-                "arrived"
-            ];
+        if (!currentUserId) {
+            return res.status(401).json({
+                success: false,
+                message: "Authenticated user not found."
+            });
+        }
 
-            result = result.filter(
-                (incident) =>
-                    statusFilter.includes(
-                        normalizeStatus(
-                            incident.status
-                        )
-                    ) ||
-                    incident.responderId ===
-                        req.user.uid
+        // CITIZEN: Only their own incidents
+        if (role === "citizen") {
+            result = result.filter(incident =>
+                (incident.userId || incident.citizenId) === currentUserId
             );
         }
 
-        /*
-         * Optional query filters.
-         */
+        // RESPONDER: Only incidents assigned to them
+        else if (role === "responder") {
+            result = result.filter(incident =>
+                incident.responderId === currentUserId
+            );
+        }
 
+        // ADMIN: Can access all incidents
+        else if (role !== "admin") {
+            return res.status(403).json({
+                success: false,
+                message: "You are not authorized to view incidents."
+            });
+        }
+
+        // Optional query filters
         const {
             status,
             severity,
@@ -366,67 +365,49 @@ async function getIncidents(req, res, next) {
             responderId
         } = req.query;
 
+        // Additional filters cannot expand the user's access.
         if (status) {
-            result = result.filter(
-                (incident) =>
-                    normalizeStatus(
-                        incident.status
-                    ) ===
-                    normalizeStatus(status)
+            result = result.filter(incident =>
+                normalizeStatus(incident.status) ===
+                normalizeStatus(status)
             );
         }
 
         if (severity) {
-            result = result.filter(
-                (incident) =>
-                    normalizeSeverity(
-                        incident.severity
-                    ) ===
-                    normalizeSeverity(severity)
+            result = result.filter(incident =>
+                normalizeSeverity(incident.severity) ===
+                normalizeSeverity(severity)
             );
         }
 
         if (priority) {
-            result = result.filter(
-                (incident) =>
-                    normalizePriority(
-                        incident.priority
-                    ) ===
-                    normalizePriority(priority)
+            result = result.filter(incident =>
+                normalizePriority(incident.priority) ===
+                normalizePriority(priority)
             );
         }
 
         if (type) {
-            result = result.filter(
-                (incident) =>
-                    normalizeText(
-                        incident.type
-                    ).toLowerCase() ===
-                    normalizeText(
-                        type
-                    ).toLowerCase()
+            result = result.filter(incident =>
+                normalizeText(incident.type).toLowerCase() ===
+                normalizeText(type).toLowerCase()
             );
         }
 
-        if (userId) {
-            result = result.filter(
-                (incident) =>
-                    incident.userId === userId
+        // These extra filters are admin-only.
+        if (role === "admin" && userId) {
+            result = result.filter(incident =>
+                (incident.userId || incident.citizenId) === userId
             );
         }
 
-        if (responderId) {
-            result = result.filter(
-                (incident) =>
-                    incident.responderId ===
-                    responderId
+        if (role === "admin" && responderId) {
+            result = result.filter(incident =>
+                incident.responderId === responderId
             );
         }
 
-        /*
-         * Highest priority first.
-         */
-
+        // Highest priority first, newest incident next
         result.sort((a, b) => {
             const priorityDifference =
                 priorityScore(b.priority) -
@@ -437,12 +418,8 @@ async function getIncidents(req, res, next) {
             }
 
             return (
-                new Date(
-                    b.createdAt || 0
-                ) -
-                new Date(
-                    a.createdAt || 0
-                )
+                new Date(b.createdAt || 0) -
+                new Date(a.createdAt || 0)
             );
         });
 
@@ -456,6 +433,7 @@ async function getIncidents(req, res, next) {
         next(error);
     }
 }
+
 
 
 // ============================================================

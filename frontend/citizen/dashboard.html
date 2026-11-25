@@ -335,50 +335,45 @@ document.getElementById("logoutBtn").addEventListener("click", async () => {
 
 /* ================= RECENT INCIDENTS ================= */
 
-async function loadRecentIncidents() {
 
-    const container =
-        document.getElementById("recentIncidents");
+async function loadRecentIncidents() {
+    const container = document.getElementById("recentIncidents");
 
     try {
+        container.textContent = "Loading incidents...";
 
-        const incidentsQuery = query(
-            ref(db, "incidents"),
-            orderByChild("userId"),
-            equalTo(currentUser.uid),
-            limitToLast(5)
+        const token = await currentUser.getIdToken();
+
+        const response = await fetch(
+            "http://localhost:5000/api/incidents",
+            {
+                method: "GET",
+                headers: {
+                    "Authorization": `Bearer ${token}`,
+                    "Content-Type": "application/json"
+                }
+            }
         );
 
-        const snapshot =
-            await get(incidentsQuery);
+        const result = await response.json();
 
-        if (!snapshot.exists()) {
-
-            container.innerHTML =
-                "<p>No emergency reports found.</p>";
-
-            return;
+        if (!response.ok || !result.success) {
+            throw new Error(result.message || "Failed to fetch incidents");
         }
 
-        const incidents = [];
+        const incidents = Array.isArray(result.incidents)
+            ? result.incidents.slice(0, 5)
+            : [];
 
-        snapshot.forEach(child => {
-
-            incidents.push({
-                id: child.key,
-                ...child.val()
-            });
-
-        });
-
-        incidents.reverse();
+        if (incidents.length === 0) {
+            container.innerHTML = "<p>No emergency reports found.</p>";
+            return;
+        }
 
         container.innerHTML = "";
 
         incidents.forEach(incident => {
-
             const div = document.createElement("div");
-
             div.className = "incident";
 
             div.innerHTML = `
@@ -392,26 +387,24 @@ async function loadRecentIncidents() {
                     ${escapeHTML(incident.status || "Reported")}
                 </span>
                 <br><br>
-                <button class="primary"
-                    onclick="location.href='tracking.html?id=${incident.id}'">
+                <button class="primary" type="button">
                     Track
                 </button>
             `;
 
-            container.appendChild(div);
+            div.querySelector("button").addEventListener("click", () => {
+                location.href = `tracking.html?id=${encodeURIComponent(incident.id)}`;
+            });
 
+            container.appendChild(div);
         });
 
     } catch (error) {
-
-        console.error(error);
-
-        container.innerHTML =
-            "<p>Unable to load incidents.</p>";
-
+        console.error("Recent incidents error:", error);
+        container.innerHTML = "<p>Unable to load incidents.</p>";
     }
-
 }
+
 
 
 /* ================= SOS ================= */
